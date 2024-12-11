@@ -1,0 +1,40 @@
+input_size: [1, 256, 256]
+# mean: [0.3597]
+# std: [0.3075]
+mean: [0.1790]
+std: [0.2979]
+# mean: [0]
+# std: [1]
+
+epochs: 20
+batch_size: 8
+
+optimizer: 
+  name: Adam
+  kwargs:
+    lr: 0.0003
+
+loss_fn:
+  name: 'BCELoss'
+  kwargs:
+    reduction: 'mean'
+
+# scheduler:
+#   name: CosineAnnealingLR
+#   metric: eval_loss
+#   kwargs:
+#     T_max: 20
+#     eta_min: 0.00001
+
+device: "cuda"
+
+log_each: 1
+checkpoint_each: 20
+
+wandb: False
+entity: "ben_schmark"
+project_name: "thermanomaly"
+project_group: "dmr_supervised_sae_nosym"
+log_dir: "./logs/dmr_sup"
+run_name: "sae_fullimg_finetuning"
+num_workers: 0

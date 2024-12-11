@@ -1,0 +1,45 @@
+input_size: [1, 256, 256]
+mean: [0.1790]
+std: [0.2979]
+# mean: [0.3597] #(full im)
+# std: [0.3075]
+# Hyperparameters for the SAE model (beta)
+steps: 400000
+lr: 0.001
+batch_size: 4
+channel_multiplier: 1
+channels: 16
+text_channels: 1024
+struct_channels: 4
+min_patch_size: 0.125
+max_patch_size: 0.25
+grad_clip: 1.0
+
+# Dataset
+data_root: ./data/dmrir/
+normal_dir: train/normal
+anomalous_dir: train/anomalous
+
+metrics:
+  reconstruction: []
+  anomaly: []
+
+# scheduler:
+#   name: ExponentialLR
+#   kwargs:
+#     gamma: 0.99
+
+# Run related
+num_workers: 0
+log_each: 1000
+log_dir: ./logs/sae_dmrir
+checkpoint_each: 100000
+#seed: None
+device: cuda
+
+wandb: False
+entity: ben_schmark
+project_name: thermanomaly
+project_group: sae_dmrir
+model_name: sae_dmrir_temperature_transfer
+run_name: sae_c16_s4_t1024_nopatchnce
