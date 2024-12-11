@@ -1,0 +1,16 @@
+albumentations
+matplotlib
+numpy
+Pillow
+piqa
+plotly
+PyYAML
+scikit-learn
+scikit-image
+timm
+torch
+torchinfo
+torchvision
+tqdm
+transformers
+wandb
