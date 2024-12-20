@@ -1,4 +1,4 @@
-import models.autoencoders.swapping_autoencoder as sae
+import models.swapping_autoencoder as sae
 from training.pipelines.dmrir_pipeline import SAEDMRIRPipeline
 
 

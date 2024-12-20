@@ -4,15 +4,15 @@ from torch.utils.data import DataLoader, Dataset, ConcatDataset
 from datasets.dmrir_dataset import DMRIRLeftRightDataset, DMRIRMatrixDataset
 from albumentations.pytorch import ToTensorV2
 import albumentations as A
-from models.autoencoders import swapping_autoencoder as sae
+from models import swapping_autoencoder as sae
 from models.ema import EMA
-from training.loggers.logger import Logger
+from training.logging.loggers import Logger
 from training.pipelines.pipeline import SupervisedPipeline
 from functools import partial
 from torchvision.models.squeezenet import squeezenet1_1
 from torchvision.models.convnext import convnext_small, convnext_tiny, LayerNorm2d, Conv2dNormActivation
 from models.utils import count_parameters
-from models.autoencoders.convolutional import ConvEncoder
+#from models.autoencoders.convolutional import ConvEncoder
 
 
 def prepare_train_val_test_sae(dataset_class, config, **dataset_kwargs):
@@ -104,18 +104,7 @@ class SAEClassifier(nn.Module):
         out = self.head(t)
         return out
     
-# class ConvClassifier(nn.Module):
-#     def __init__(self) -> None:
-#         super().__init__()
-#         self.classifier = nn.Sequential(
-#             ConvEncoder(128, 32, 1),
-#             nn.Flatten(),
-#             nn.Linear(10368, 1),
-#             nn.Sigmoid()
-#         )
-#     def forward(self, x):
-#         x = x.cuda()
-#         return self.classifier(x)          
+    
 
 class SupervisedWrapper(Dataset):
     def __init__(self, dataset, label):
