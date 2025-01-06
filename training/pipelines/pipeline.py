@@ -144,8 +144,7 @@ class AbstractPipeline(metaclass=ABCMeta):
             if k in self.config.keys() and v is not None:
                 self.config[k] = v
 
-        if not os.path.exists(self.config["log_dir"]):
-            os.mkdir(self.config["log_dir"])
+        os.makedirs(self.config["log_dir"], exist_ok=True)
 
         if "seed" in self.config:
             self.set_seed(self.config["seed"])

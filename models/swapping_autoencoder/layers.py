@@ -2,15 +2,13 @@ import math
 import torch
 from torch import nn
 from torch.nn import functional as F
-from models.autoencoders.swapping_autoencoder.stylegan2.model import (
+from models.swapping_autoencoder.stylegan2.op.fused_act import FusedLeakyReLU
+from models.swapping_autoencoder.stylegan2.model import (
     StyledConv,
     Blur,
     EqualLinear,
     EqualConv2d,
     ScaledLeakyReLU,
-)
-from models.autoencoders.swapping_autoencoder.stylegan2.op.fused_act import (
-    FusedLeakyReLU,
 )
 
 

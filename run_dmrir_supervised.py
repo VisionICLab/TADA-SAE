@@ -124,7 +124,7 @@ CHANNELS = 16
 STRUCTURE_CHANNELS = 4
 TEXTURE_CHANNELS = 1024
 pipeline = SupervisedPipeline()
-pipeline.init_pipeline("./configs/supervised_dmr.yaml")
+pipeline.init_pipeline("./configs/supervised_dmrir.yaml")
 for i in range(10):
     pipeline.config['run_name'] = f'sae_nosym_dmr_{i}'
     encoder = EMA(sae.encoders.PyramidEncoder(CHANNELS, STRUCTURE_CHANNELS, TEXTURE_CHANNELS, gray=True)).cuda()

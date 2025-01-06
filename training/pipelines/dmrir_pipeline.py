@@ -7,7 +7,7 @@ from datasets.dmrir_dataset import DMRIRMatrixDataset
 from datasets.utils import InfiniteDataLoader
 import numpy as np
 from torch.utils.data import random_split, DataLoader
-from pipelines.pipeline import AbstractPipeline
+from training.pipelines.pipeline import AbstractPipeline
 import yaml
 from models.ema import EMA
 from models.utils import count_parameters

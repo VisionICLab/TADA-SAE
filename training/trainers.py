@@ -3,10 +3,9 @@ from tqdm import tqdm, trange
 from abc import ABCMeta
 import numpy as np
 import os
-from visualisations.images import visualize_reconstructions
-from inference.evaluation import anomaly, reconstruction
-from visualisations.anomalies import plot_roc_curve, visualize_anomaly_hist
-from training.loggers.logger import Logger
+from inference import metrics
+from training.logging.visualisations import visualize_reconstructions
+from training.logging.loggers import Logger
 import torchmetrics
 
 
@@ -140,170 +139,170 @@ class Trainer(metaclass=ABCMeta):
             self.logger.log(self.current_epoch)
 
 
-class ReconstructionTrainer(Trainer):
-    """
-    A trainer for reconstruction models, such as autoencoders and diffusion models
-    """
+# class ReconstructionTrainer(Trainer):
+#     """
+#     A trainer for reconstruction models, such as autoencoders and diffusion models
+#     """
 
-    def __init__(self, model, optimizer, loss_fn, config, logger, scheduler=None):
-        super().__init__(model, optimizer, loss_fn, config, logger, scheduler)
-        self.metrics = {"reconstruction": {}}
-        for metric in config["metrics"]["reconstruction"]:
-            self.metrics["reconstruction"][metric] = getattr(
-                reconstruction, metric
-            )().to(config["device"])
+#     def __init__(self, model, optimizer, loss_fn, config, logger, scheduler=None):
+#         super().__init__(model, optimizer, loss_fn, config, logger, scheduler)
+#         self.metrics = {"reconstruction": {}}
+#         for metric in config["metrics"]["reconstruction"]:
+#             self.metrics["reconstruction"][metric] = getattr(
+#                 reconstruction, metric
+#             )().to(config["device"])
 
-    def _make_visualizations(self, dataset, size=5, title="Reconstructions"):
-        random_sampes_idx = np.random.randint(len(dataset), size=size)
-        random_samples = []
-        random_recons = []
-        for i in random_sampes_idx:
-            random_sample = dataset[i].unsqueeze(0).to(self.config["device"])
-            recons = self.model(random_sample)[0]
-            random_recons.append(recons.detach().squeeze(0).cpu())
-            random_samples.append(random_sample.detach().squeeze(0).cpu())
-        random_recons = torch.stack(random_recons)
-        random_samples = torch.stack(random_samples)
-        _, fig = visualize_reconstructions(
-            random_samples, random_recons, title=title, with_delta=True
-        )
-        return fig
+#     def _make_visualizations(self, dataset, size=5, title="Reconstructions"):
+#         random_sampes_idx = np.random.randint(len(dataset), size=size)
+#         random_samples = []
+#         random_recons = []
+#         for i in random_sampes_idx:
+#             random_sample = dataset[i].unsqueeze(0).to(self.config["device"])
+#             recons = self.model(random_sample)[0]
+#             random_recons.append(recons.detach().squeeze(0).cpu())
+#             random_samples.append(random_sample.detach().squeeze(0).cpu())
+#         random_recons = torch.stack(random_recons)
+#         random_samples = torch.stack(random_samples)
+#         _, fig = visualize_reconstructions(
+#             random_samples, random_recons, title=title, with_delta=True
+#         )
+#         return fig
 
-    @torch.no_grad()
-    def evaluate(self, val_loader, with_visualizations=True):
-        """
-        Evaluates a reconstruction model for one epoch of a validation set
+#     @torch.no_grad()
+#     def evaluate(self, val_loader, with_visualizations=True):
+#         """
+#         Evaluates a reconstruction model for one epoch of a validation set
 
-        Args:
-            val_loader (DataLoader): validation data loader
-        """
-        self.model.eval()
+#         Args:
+#             val_loader (DataLoader): validation data loader
+#         """
+#         self.model.eval()
 
-        progress_bar = tqdm(val_loader, desc="Evaluating reconstruction", colour="cyan")
+#         progress_bar = tqdm(val_loader, desc="Evaluating reconstruction", colour="cyan")
 
-        for x in progress_bar:
-            val_loss, outputs, gt = self.eval_step(x)
+#         for x in progress_bar:
+#             val_loss, outputs, gt = self.eval_step(x)
 
-            for metric in self.config["metrics"]["reconstruction"]:
-                self.logger.register_log(
-                    {metric: self.metrics["reconstruction"][metric](outputs, gt)}
-                )
+#             for metric in self.config["metrics"]["reconstruction"]:
+#                 self.logger.register_log(
+#                     {metric: self.metrics["reconstruction"][metric](outputs, gt)}
+#                 )
 
-            self.logger.register_log({"eval_loss": val_loss})
-            progress_bar.set_postfix({"Loss": val_loss})
+#             self.logger.register_log({"eval_loss": val_loss})
+#             progress_bar.set_postfix({"Loss": val_loss})
 
-        if with_visualizations and self.current_epoch % self.config["log_each"] == 0:
-            f = self._make_visualizations(
-                val_loader.dataset,
-                title=f"Reconstruction at epoch {self.current_epoch}",
-            )
-            self.logger.register_visualization("reconstruction", f)
+#         if with_visualizations and self.current_epoch % self.config["log_each"] == 0:
+#             f = self._make_visualizations(
+#                 val_loader.dataset,
+#                 title=f"Reconstruction at epoch {self.current_epoch}",
+#             )
+#             self.logger.register_visualization("reconstruction", f)
 
 
-class AnomalyReconstructTrainer(ReconstructionTrainer):
-    """
-    A trainer class for anomaly detection models based on reconstruction
+# class AnomalyReconstructTrainer(ReconstructionTrainer):
+#     """
+#     A trainer class for anomaly detection models based on reconstruction
 
-    Args:
-        model: model to train
-        optimizer: optimizer to use
-        loss_fn: loss function to use
-        ano_fn: function to compute the anomaly score (normal score, anomaly scores)
-        config: configuration dictionary
-        scheduler: lr scheduler to use
-    """
+#     Args:
+#         model: model to train
+#         optimizer: optimizer to use
+#         loss_fn: loss function to use
+#         ano_fn: function to compute the anomaly score (normal score, anomaly scores)
+#         config: configuration dictionary
+#         scheduler: lr scheduler to use
+#     """
 
-    def __init__(
-        self, model, optimizer, loss_fn, ano_fn, config, logger, scheduler=None
-    ):
-        super().__init__(model, optimizer, loss_fn, config, logger, scheduler)
-        self.ano_fn = ano_fn
-        self.metrics = {**self.metrics, "anomaly": {}}
-        for metric in config["metrics"]["anomaly"]:
-            self.metrics["anomaly"][metric] = getattr(anomaly, metric)().to(
-                config["device"]
-            )
+#     def __init__(
+#         self, model, optimizer, loss_fn, ano_fn, config, logger, scheduler=None
+#     ):
+#         super().__init__(model, optimizer, loss_fn, config, logger, scheduler)
+#         self.ano_fn = ano_fn
+#         self.metrics = {**self.metrics, "anomaly": {}}
+#         for metric in config["metrics"]["anomaly"]:
+#             self.metrics["anomaly"][metric] = getattr(metrics, metric)().to(
+#                 config["device"]
+#             )
 
-    @torch.no_grad()
-    def _evaluate_anomaly(self, normal_subset, anomaly_subset):
-        normal_scores = []
-        anomaly_scores = []
-        for i in trange(len(normal_subset), desc="Evaluating normal", colour="magenta"):
-            normal = normal_subset[i]
-            normal_scores.append(self._predict_anomaly_score(normal))
+#     @torch.no_grad()
+#     def _evaluate_anomaly(self, normal_subset, anomaly_subset):
+#         normal_scores = []
+#         anomaly_scores = []
+#         for i in trange(len(normal_subset), desc="Evaluating normal", colour="magenta"):
+#             normal = normal_subset[i]
+#             normal_scores.append(self._predict_anomaly_score(normal))
 
-        for i in trange(
-            len(anomaly_subset), desc="Evaluating anomalous", colour="magenta"
-        ):
-            anomalous = anomaly_subset[i]
-            anomaly_scores.append(self._predict_anomaly_score(anomalous))
-        return normal_scores, anomaly_scores
+#         for i in trange(
+#             len(anomaly_subset), desc="Evaluating anomalous", colour="magenta"
+#         ):
+#             anomalous = anomaly_subset[i]
+#             anomaly_scores.append(self._predict_anomaly_score(anomalous))
+#         return normal_scores, anomaly_scores
 
-    @torch.no_grad()
-    def _predict_anomaly_score(self, x):
-        """
-        Predicts the anomaly score of a sample
+#     @torch.no_grad()
+#     def _predict_anomaly_score(self, x):
+#         """
+#         Predicts the anomaly score of a sample
 
-        Args:
-            x (Tensor): sample to predict the anomaly score of
-            y (Tensor, optional): original sample. Defaults to None. If None, x is used
-        Returns:
-            float: anomaly score of the sample
-        """
-        x = x.unsqueeze(0).to(self.config["device"])
-        recons = self.model(x)[0].detach()
-        cur_anomaly_score = self.ano_fn(recons, x)
-        return cur_anomaly_score.item()
+#         Args:
+#             x (Tensor): sample to predict the anomaly score of
+#             y (Tensor, optional): original sample. Defaults to None. If None, x is used
+#         Returns:
+#             float: anomaly score of the sample
+#         """
+#         x = x.unsqueeze(0).to(self.config["device"])
+#         recons = self.model(x)[0].detach()
+#         cur_anomaly_score = self.ano_fn(recons, x)
+#         return cur_anomaly_score.item()
 
-    @torch.no_grad()
-    def evaluate(
-        self, val_loader, normal_subset, anomaly_subset, with_visualizations=True
-    ):
-        """
-        Evaluates an anomaly detection model for one epoch of a validation set
-        with the anomaly detection metric
+#     @torch.no_grad()
+#     def evaluate(
+#         self, val_loader, normal_subset, anomaly_subset, with_visualizations=True
+#     ):
+#         """
+#         Evaluates an anomaly detection model for one epoch of a validation set
+#         with the anomaly detection metric
 
-        Args:
-            val_loader (DataLoader): validation data loader
-        """
-        super().evaluate(val_loader, False)
-        if self.current_epoch % self.config["log_each"] != 0:
-            return
+#         Args:
+#             val_loader (DataLoader): validation data loader
+#         """
+#         super().evaluate(val_loader, False)
+#         if self.current_epoch % self.config["log_each"] != 0:
+#             return
 
-        normal_scores, anomaly_scores = self._evaluate_anomaly(
-            normal_subset, anomaly_subset
-        )
+#         normal_scores, anomaly_scores = self._evaluate_anomaly(
+#             normal_subset, anomaly_subset
+#         )
 
-        for metric in self.config["metrics"]["anomaly"]:
-            self.logger.register_log(
-                {metric: self.metrics["anomaly"][metric](normal_scores, anomaly_scores)}
-            )
+#         for metric in self.config["metrics"]["anomaly"]:
+#             self.logger.register_log(
+#                 {metric: self.metrics["anomaly"][metric](normal_scores, anomaly_scores)}
+#             )
 
-        if with_visualizations:
-            f_normal = self._make_visualizations(
-                normal_subset,
-                5,
-                title=f"Reconstructions at epoch {self.current_epoch} (Normal)",
-            )
-            self.logger.register_visualization("reconstruction_normal", f_normal)
-            f_anomaly = self._make_visualizations(
-                anomaly_subset,
-                5,
-                title=f"Reconstructions at epoch {self.current_epoch} (Anomalous)",
-            )
-            self.logger.register_visualization("reconstruction_anomaly", f_anomaly)
-            hist_fig = visualize_anomaly_hist(normal_scores, anomaly_scores)
-            self.logger.register_visualization(f"anomaly_hist", hist_fig)
+#         if with_visualizations:
+#             f_normal = self._make_visualizations(
+#                 normal_subset,
+#                 5,
+#                 title=f"Reconstructions at epoch {self.current_epoch} (Normal)",
+#             )
+#             self.logger.register_visualization("reconstruction_normal", f_normal)
+#             f_anomaly = self._make_visualizations(
+#                 anomaly_subset,
+#                 5,
+#                 title=f"Reconstructions at epoch {self.current_epoch} (Anomalous)",
+#             )
+#             self.logger.register_visualization("reconstruction_anomaly", f_anomaly)
+#             hist_fig = visualize_anomaly_hist(normal_scores, anomaly_scores)
+#             self.logger.register_visualization(f"anomaly_hist", hist_fig)
 
-    def fit(self, train_loader, val_loader, normal_subset, anomaly_subset):
-        while self.current_epoch < self.config["epochs"]:
-            self.current_epoch += 1
-            self.train(train_loader)
-            self.evaluate(val_loader, normal_subset, anomaly_subset)
-            self.logger.compile_logs()
-            self.update_scheduler()
-            self._make_checkpoint(self.current_epoch)
-            self.logger.log(self.current_epoch)
+#     def fit(self, train_loader, val_loader, normal_subset, anomaly_subset):
+#         while self.current_epoch < self.config["epochs"]:
+#             self.current_epoch += 1
+#             self.train(train_loader)
+#             self.evaluate(val_loader, normal_subset, anomaly_subset)
+#             self.logger.compile_logs()
+#             self.update_scheduler()
+#             self._make_checkpoint(self.current_epoch)
+#             self.logger.log(self.current_epoch)
 
 class SupervisedTrainer(Trainer):
     def __init__(self, model, optimizer, loss_fn, config, logger, scheduler=None):
