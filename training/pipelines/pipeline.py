@@ -2,8 +2,6 @@ from abc import ABCMeta, abstractmethod
 import os
 import yaml
 from argparse import ArgumentParser
-from training.trainers import SupervisedTrainer
-import torch
 import torch
 
 
@@ -22,15 +20,14 @@ SCHEDULERS = {
 }
 
 class AbstractPipeline(metaclass=ABCMeta):
-    def __init__(self):
+    def __init__(self, main_parser: ArgumentParser=None):
         """
         A base pipeline for training models and running experiments
         """
         self.config = {}
-
-        self.parser = ArgumentParser(
-            description="Basic pipeline for training and inference"
-        )
+        
+        self.parser = ArgumentParser() if main_parser is None else main_parser
+    
         self.parser.add_argument(
             "--log_dir",
             type=str,
@@ -198,21 +195,3 @@ class AbstractPipeline(metaclass=ABCMeta):
     @abstractmethod
     def run(self):
         pass
-
-
-
-class SupervisedPipeline(AbstractPipeline):
-    """
-    A pipeline for training supervised models
-    """
-    def prepare_data(self):
-        raise NotImplementedError
-    
-    def prepare_trainer(self, model, logger):
-        optimizer, loss_fn, scheduler = self._prepare_training(model)
-        return SupervisedTrainer(
-            model, optimizer, loss_fn, self.config, logger, scheduler
-        )
-
-    def run(self, trainer, train_loader, val_loader, test_loader):
-        trainer.fit(train_loader, val_loader, test_loader)

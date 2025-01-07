@@ -1,5 +1,7 @@
+import torch
 from torch import nn
-
+from torchvision import models
+from torchvision.models.inception import BasicConv2d
 
 class ConvEncoder(nn.Module):
     """
@@ -100,7 +102,7 @@ class ConvEncoder(nn.Module):
         return self.encoder(x)
 
 
-class ConvClassifier(nn.Module):
+class ConvSmall(nn.Module):
     def __init__(self, z_dim=128, c_hid=32, c_in=1, device='cpu') -> None:
         super().__init__()
         self.device=device
@@ -115,3 +117,25 @@ class ConvClassifier(nn.Module):
         x = x.to(self.device)
         return self.classifier(x)      
     
+
+class ResNet18(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.resnet18 = models.resnet18()
+        self.resnet18.conv1 = torch.nn.Conv2d(1, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
+        self.resnet18.fc = torch.nn.Linear(512, 1)
+    
+    def forward(self, x):
+        return self.resnet18(x)
+    
+
+class InceptionV3(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.inceptionv3 = models.inception_v3()
+        self.inceptionv3.transform_input=False
+        self.inceptionv3.Conv2d_1a_3x3 = BasicConv2d(1, 32, kernel_size=3, stride=2)
+    
+    def forward(self, x):
+        return self.inceptionv3(x)
+        

@@ -305,35 +305,10 @@ class DMRIRLeftRightDataset(DMRIRMatrixDataset):
                 idx -= len(self.files[p_id]["matrix"])
 
 
-class DMRP2PDataset(DMRIRLeftRightDataset):
-    def __init__(self, root, transforms=None, do_switch=False):
-        super().__init__(root, transforms=transforms)
-        self.do_switch = do_switch
-
-    def get_contours(self, image):
-        contours = cv2.blur(image, (5, 5))
-        contours = cv2.Laplacian(contours, cv2.CV_8U, ksize=5)
-        contours = cv2.dilate(contours, None, iterations=2)
-        return contours
-
+class LabeledDMRIRDataset(DMRIRMatrixDataset):
+    def __init__(self, root, class_label, transforms=None, apply_mask=True):
+        super().__init__(root, transforms, side='both', return_mask=False, apply_mask=apply_mask, flip_align=False)
+        self.class_label = class_label
+    
     def __getitem__(self, idx):
-        for p_id in self.files:
-            if idx < len(self.files[p_id]["matrix"]):
-                img, mask_l, mask_r = self._get_image_mask_from_idx(p_id, idx)
-
-                img_l = img * (mask_l > 0)
-                img_r = img * (mask_r > 0)
-
-                img_l_c = self.get_contours(img_l)
-                img_r_c = self.get_contours(img_r)
-                if self.transforms is not None:
-                    augmented = self.transforms(
-                        image=img_l, image0=img_r, mask=img_l_c, mask0=img_r_c
-                    )
-                    img_l = augmented["image"]
-                    img_r = augmented["image0"]
-                    img_l_c = augmented["mask"].float() / 255
-                    img_r_c = augmented["mask0"].float() / 255
-                return img_l, img_l_c, img_r, img_r_c
-            else:
-                idx -= len(self.files[p_id]["matrix"])
+        return super().__getitem__(idx), self.class_label
