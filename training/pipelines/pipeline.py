@@ -19,6 +19,12 @@ SCHEDULERS = {
     "StepLR": torch.optim.lr_scheduler.StepLR,
 }
 
+LOSS_FUNCTIONS = {
+    "L1Loss": torch.nn.L1Loss,
+    "MSELoss": torch.nn.MSELoss,
+    "BCELoss": torch.nn.BCELoss,
+}
+
 class AbstractPipeline(metaclass=ABCMeta):
     def __init__(self, main_parser: ArgumentParser=None):
         """
@@ -153,6 +159,8 @@ class AbstractPipeline(metaclass=ABCMeta):
             if "scheduler" in self.config.keys()
             else None
         )
+        
+        self.loss_fn_class = LOSS_FUNCTIONS[self.config["loss_fn"]["name"]]
 
     def _prepare_training(self, model):
         optimizer = self.optimizer_class(

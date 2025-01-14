@@ -28,12 +28,14 @@ if __name__ == '__main__':
         help=f'Experiment choice, one of {BASELINE_EXPERIMENTS}'
     )
     
+    experiment = vars(main_parser.parse_args())['experiment']
+    
     pipeline = DMRIRSupervisedPipeline(main_parser)
     pipeline.init_pipeline("./configs/supervised_dmrir.yaml")
 
     train_loader, val_loader, test_loader = pipeline.prepare_data()
     
-    model = MODELS[pipeline.config['experiment']]().to(pipeline.config['device'])
+    model = MODELS[experiment]().to(pipeline.config['device'])
     with Logger(pipeline.config) as logger:
         trainer = pipeline.prepare_trainer(model, logger)
         pipeline.run(trainer, train_loader, val_loader, test_loader)

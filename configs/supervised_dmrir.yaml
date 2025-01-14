@@ -3,8 +3,10 @@ input_size: [1, 256, 256]
 # std: [0.3075]
 mean: [0.1790]
 std: [0.2979]
-# mean: [0]
-# std: [1]
+
+root: ./data/dmrir
+normal_dir: normal
+anomaly_dir: anomalous
 
 epochs: 20
 batch_size: 8

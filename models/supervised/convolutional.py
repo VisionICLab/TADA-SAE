@@ -103,9 +103,8 @@ class ConvEncoder(nn.Module):
 
 
 class ConvSmall(nn.Module):
-    def __init__(self, z_dim=128, c_hid=32, c_in=1, device='cpu') -> None:
+    def __init__(self, z_dim=128, c_hid=32, c_in=1) -> None:
         super().__init__()
-        self.device=device
         self.classifier = nn.Sequential(
             ConvEncoder(z_dim, c_hid, c_in),
             nn.Flatten(),
@@ -114,28 +113,36 @@ class ConvSmall(nn.Module):
         )
 
     def forward(self, x):
-        x = x.to(self.device)
         return self.classifier(x)      
     
 
 class ResNet18(nn.Module):
     def __init__(self):
         super().__init__()
-        self.resnet18 = models.resnet18()
-        self.resnet18.conv1 = torch.nn.Conv2d(1, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
-        self.resnet18.fc = torch.nn.Linear(512, 1)
+        resnet18_model = models.resnet18()
+        resnet18_model.conv1 = torch.nn.Conv2d(1, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
+        resnet18_model.fc = torch.nn.Linear(512, 1)
+        self.classifier = nn.Sequential(
+            resnet18_model,
+            nn.Sigmoid()
+        )
     
     def forward(self, x):
-        return self.resnet18(x)
+        return self.classifier(x)
     
 
 class InceptionV3(nn.Module):
     def __init__(self):
         super().__init__()
-        self.inceptionv3 = models.inception_v3()
-        self.inceptionv3.transform_input=False
-        self.inceptionv3.Conv2d_1a_3x3 = BasicConv2d(1, 32, kernel_size=3, stride=2)
+        self.inceptionv3_model = models.inception_v3()
+        self.inceptionv3_model.transform_input=False
+        self.inceptionv3_model.Conv2d_1a_3x3.conv=nn.Conv2d(1, 32, kernel_size=3, stride=1, padding=2, bias=False)
+        nn.init.kaiming_normal_(self.inceptionv3_model.Conv2d_1a_3x3.conv.weight, mode='fan_out', nonlinearity='relu')
+        self.inceptionv3_model.fc = nn.Linear(self.inceptionv3_model.fc.in_features, 1)
+        
+        self.sigmoid = nn.Sigmoid()
     
     def forward(self, x):
-        return self.inceptionv3(x)
+        out = self.inceptionv3_model(x)[0]
+        return self.sigmoid(out)
         

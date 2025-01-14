@@ -318,6 +318,7 @@ class SupervisedTrainer(Trainer):
         }
 
     def train_step(self, x, y):
+        x = x.to(self.config['device'])
         y = y.to(self.config["device"]).unsqueeze(1)
         self.optimizer.zero_grad()
         y_hat = self.model(x)
@@ -328,6 +329,7 @@ class SupervisedTrainer(Trainer):
     
     @torch.no_grad()
     def eval_step(self, x, y):
+        x = x.to(self.config['device'])
         y = y.to(self.config["device"]).unsqueeze(1)
         y_hat = self.model(x)
         loss = self.loss_fn(y_hat, y.float())

@@ -22,7 +22,6 @@ class DMRIRSupervisedPipeline(AbstractPipeline):
         aug_pipeline = []
         if with_augmentations:
             aug_pipeline = [
-                A.Resize(h, w),
                 A.Affine(
                     translate_percent=(0.125, 0.25), 
                     rotate=(-30, 30), 
@@ -33,9 +32,10 @@ class DMRIRSupervisedPipeline(AbstractPipeline):
                 A.ElasticTransform(),
                 A.GaussianBlur()
             ]
+            
         aug_pipeline += tr_pipeline
-        train_transforms = A.Compose(aug_pipeline)
-        test_transforms = A.Compose(tr_pipeline)
+        train_transforms = A.Compose([A.Resize(h, w)] + aug_pipeline)
+        test_transforms = A.Compose([A.Resize(h, w)] + tr_pipeline)
         
         train_n_path = os.path.join(self.config['root'], 'train', self.config['normal_dir'])
         train_a_path = os.path.join(self.config['root'], 'train', self.config['anomaly_dir'])
@@ -43,11 +43,11 @@ class DMRIRSupervisedPipeline(AbstractPipeline):
         test_n_path = os.path.join(self.config['root'], 'test', self.config['normal_dir'])
         test_a_path = os.path.join(self.config['root'], 'test', self.config['anomaly_dir'])
         
-        train_n_ds, val_n_ds = LabeledDMRIRDataset(train_n_path, 0, train_transforms).split()
-        train_a_ds, val_a_ds = LabeledDMRIRDataset(train_a_path, 1, train_transforms).split()
+        train_n_ds, val_n_ds = LabeledDMRIRDataset(train_n_path, 0, train_transforms, apply_mask=False).split()
+        train_a_ds, val_a_ds = LabeledDMRIRDataset(train_a_path, 1, train_transforms, apply_mask=False).split()
 
         test_n_ds = LabeledDMRIRDataset(test_n_path, 0, test_transforms)
-        test_a_ds = LabeledDMRIRDataset(test_a_path, 0, test_transforms)
+        test_a_ds = LabeledDMRIRDataset(test_a_path, 1, test_transforms)
         
         val_n_ds.transforms = test_transforms
         val_a_ds.transforms = test_transforms

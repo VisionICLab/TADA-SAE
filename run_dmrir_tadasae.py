@@ -1,5 +1,5 @@
 import models.swapping_autoencoder as sae
-from training.pipelines.dmrir_pipeline import SAEDMRIRPipeline
+from training.pipelines.ssl_pipelines import SAEDMRIRPipeline
 
 
 pipeline = SAEDMRIRPipeline()
