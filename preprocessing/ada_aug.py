@@ -32,6 +32,7 @@ class ADAAugment(nn.Module):
         url={https://arxiv.org/abs/2006.06676}, 
         }
         """
+        
         super().__init__()
         self.aug_p = aug_p
         self.ada_step = ada_step

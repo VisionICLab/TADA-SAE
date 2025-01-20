@@ -6,6 +6,17 @@ from copy import deepcopy
 
 
 class DMRIRDataset(Dataset):
+    """
+    Args:
+
+        path (string): the root path to DMRIR images and masks
+        transforms (albumentations.BasicTransform): Transformations for image preprocessing
+        mode (string): Structure of returned data, one of (paired, single, patient, matrix)
+                       paired: (l_im, r_im, p_id); single: (img); patient: (img, patient_id);
+                       matrix: (img) as raw temperature values as collected by the thermal camera (in .txt files)
+    """
+
+
     def __init__(self, path, transforms=None, mode="single"):
         assert mode in [
             "paired",
@@ -145,6 +156,11 @@ class DMRIRDataset(Dataset):
 
 
 class DMRIRMatrixDataset(DMRIRDataset):
+    """
+    A DMRIRDataset subclass 
+    
+    """
+
     def __init__(
         self,
         root,
@@ -262,6 +278,11 @@ class DMRIRMatrixDataset(DMRIRDataset):
                 idx -= len(self.files[p_id]["matrix"]) * mul
 
 class DMRIRLeftRightDataset(DMRIRMatrixDataset):
+    """
+    A DMRIRMatrixDataset dataset subclass to return paired left-right breast images
+    belonging to the same patient
+    """
+    
     def __init__(self, root, transforms=None, return_mask=True, apply_mask=True, flip_align=True):
         super().__init__(root, side="both", transforms=transforms, return_mask=return_mask, apply_mask=apply_mask, flip_align=flip_align)
     

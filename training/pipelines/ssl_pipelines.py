@@ -6,19 +6,18 @@ from albumentations.pytorch import ToTensorV2
 from datasets.dmrir_dataset import DMRIRMatrixDataset
 from datasets.utils import InfiniteDataLoader
 import numpy as np
-from torch.utils.data import random_split, DataLoader
+from torch.utils.data import random_split
 from training.pipelines.pipeline import AbstractPipeline
 import yaml
 from models.ema import EMA
 from models.utils import count_parameters
 from training.sae import SAETrainer
-from training.logging.loggers import Logger
 from preprocessing.ada_aug import ADAAugment
 
 
 class SAEDMRIRPipeline(AbstractPipeline):
     """
-    A pipeline for training on DMRIR dataset with Swapped Autoencoder
+    A pipeline for training on DMRIR dataset with Swapping Autoencoder
     """
     
     def init_pipeline(self, config_path=None):
@@ -90,7 +89,7 @@ class SAEDMRIRPipeline(AbstractPipeline):
         )
         return train_loader, val_loader
     
-    def prepare_trainer(self, enc, gen, str_proj, disc, cooccur):
+    def prepare_trainer(self, enc, gen, str_proj, disc, cooccur, logger):
         print(f"Encoder: {count_parameters(enc)}")
         print(f"Generator: {count_parameters(gen)}")
         print(f"StrProjectors: {count_parameters(str_proj)}")
@@ -115,7 +114,6 @@ class SAEDMRIRPipeline(AbstractPipeline):
             disc = DataParallel(disc)
             cooccur = DataParallel(cooccur)
 
-        logger = Logger(self.config)
         trainer = SAETrainer(
             enc,
             gen,
@@ -129,3 +127,7 @@ class SAEDMRIRPipeline(AbstractPipeline):
             logger,
         )
         return trainer
+
+
+    def run(self, trainer, normal_loader, val_loader):
+        trainer.fit(normal_loader, val_loader)

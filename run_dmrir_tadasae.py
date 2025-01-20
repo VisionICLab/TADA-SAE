@@ -1,9 +1,10 @@
 import models.swapping_autoencoder as sae
 from training.pipelines.ssl_pipelines import SAEDMRIRPipeline
+from training.logging.loggers import Logger
 
 
 pipeline = SAEDMRIRPipeline()
-pipeline.init_pipeline("./configs/sae_dmr_ir.yaml")
+pipeline.init_pipeline("./configs/tadasae_dmrir.yaml")
 
 config = pipeline.get_config()
 
@@ -39,8 +40,6 @@ cooccur = sae.discriminators.CooccurDiscriminator(
 
 normal_loader, val_loader = pipeline.prepare_data()
 
-trainer = pipeline.prepare_trainer(
-    encoder, generator, str_projectors, discriminator, cooccur
-)
-
-pipeline.run(trainer, normal_loader, val_loader)
+with Logger(config) as logger:
+    trainer = pipeline.prepare_trainer(encoder, generator, str_projectors, discriminator, cooccur, logger)
+    pipeline.run(trainer, normal_loader, val_loader)

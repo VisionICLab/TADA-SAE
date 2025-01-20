@@ -5,6 +5,15 @@ import torchvision.transforms.v2.functional as TF
 
 
 class RepeatableTransform(nn.Module):
+    """
+    A base class for freezing the randomness in
+    data augmentation util .step() is called.
+
+    Used for ADAAUG, where it is more stable to apply the same set of
+    augmentations on multiple images and masks, something not yet implemented
+    in torchvision.transforms.v2 (2024).   
+    """
+
     def __init__(self, im_shape=None):
         super().__init__()
         self.im_shape = im_shape
@@ -121,7 +130,8 @@ class Brightness(RepeatableTransform):
     def forward(self, img, mask):
         im_min = img.min()
         im_max = img.max()
-        # Adjust the brightness
+
+        # Adjust the brightness for image only, mask passes through
         img += self.current_brightness
         img = torch.clamp(img, im_min, im_max)
         return img, mask
@@ -153,7 +163,6 @@ class ResizeCrop(RepeatableTransform):
         return img, mask
 
     def step(self):
-        # compute the crop parameters
         h, w = self.im_shape
         self.top = np.random.randint(0, int(h * self.factor))
         self.left = np.random.randint(0, int(w * self.factor))

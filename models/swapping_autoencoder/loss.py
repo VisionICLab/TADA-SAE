@@ -49,6 +49,10 @@ class PatchNCELoss(nn.Module):
 
 
 def d_logistic_loss(real_pred, fake_pred):
+    """
+    Non-saturating loss for discriminators (WGAN)
+    """
+
     real_loss = F.softplus(-real_pred)
     fake_loss = F.softplus(fake_pred)
 
@@ -56,6 +60,10 @@ def d_logistic_loss(real_pred, fake_pred):
 
 
 def d_r1_loss(real_pred, real_img):
+    """
+    Computes gradient penalty for discriminator networks (WGAN)
+    """
+
     grad_real_list = torch.autograd.grad(
         outputs=real_pred.sum(), inputs=real_img, create_graph=True
     )
