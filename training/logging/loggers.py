@@ -8,7 +8,6 @@ from .utils import tensor2image
 
 class Logger:
     DEFAULT_CONFIG = {
-        "log_dir": "",
         "epochs": 0,
         "log_each": 1,
         "checkpoint_each": 1,
@@ -22,10 +21,20 @@ class Logger:
 
     def __init__(self, config=None):
         """
-        A logger class to handle logging of training metrics and visualizations
+        A logger class to handle logging of training metrics and visualizations, working as a context manager
         
         Args:
-            config (dict): A dictionary containing the training configuration
+            config (dict): A dictionary containing the training configuration:
+                "log_dir": <directory for image logging>
+                "epochs": <number of epochs, default 0>
+                "steps": <number of train steps, optional>
+                "log_each": <logging occurence>
+                "checkpoint_each": <model saving occurence>
+                "wandb": <True or False>,
+                "entity": <Weights and Biases entity>,
+                "project_name": <Weights and Biases project name>,
+                "project_group": <Weights and Biases project group>,
+                "run_name": <run name for Weights and Biases + logging>
         """
         self.logs = {}
         self.config = config
@@ -45,19 +54,7 @@ class Logger:
         self.log_each = self.config["log_each"]
         self.with_wandb = self.config["wandb"]
 
-        if self.config["log_dir"]:
-            Path(os.path.join(self.config["log_dir"], "checkpoints")).mkdir(
-                parents=True, exist_ok=True
-            )
 
-        if self.with_wandb:
-            wandb.init(
-                entity=config["entity"],
-                project=config["project_name"],
-                group=config["project_group"],
-                name=config["run_name"] if "run_name" in config else None,
-                config=config,
-            )
 
     def print_logs(self, current_step):
         print(f"===== {current_step}/{self.total_steps} =====")
@@ -96,6 +93,19 @@ class Logger:
             self.compiled_logs[key] = value["value"] / value["it"]
 
     def __enter__(self):
+        if self.config["log_dir"]:
+            Path(os.path.join(self.config["log_dir"], "checkpoints")).mkdir(
+                parents=True, exist_ok=True
+            )
+
+        if self.with_wandb:
+            wandb.init(
+                entity=self.config["entity"],
+                project=self.config["project_name"],
+                group=self.config["project_group"],
+                name=self.config["run_name"] if "run_name" in self.config else None,
+                config=self.config,
+            )
         return self
 
     def reset_logs(self):

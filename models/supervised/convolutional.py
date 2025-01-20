@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 from torchvision import models
-from torchvision.models.inception import BasicConv2d
+
 
 class ConvEncoder(nn.Module):
     """
