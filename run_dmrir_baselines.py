@@ -18,26 +18,31 @@ MODELS = {
     'inception_v3': InceptionV3
 }
 
-if __name__ == '__main__':
-    main_parser = ArgumentParser()
-    main_parser.add_argument(
-        '--experiment',
-        type=str,
-        default='conv_small',
-        choices=BASELINE_EXPERIMENTS,
-        help=f'Experiment choice, one of {BASELINE_EXPERIMENTS}'
-    )
+class DMRIRBaselineExperiments:
+    def __init__(self):
+        main_parser = ArgumentParser()
+        main_parser.add_argument(
+            '--experiment',
+            type=str,
+            default='conv_small',
+            choices=BASELINE_EXPERIMENTS,
+            help=f'Experiment choice, one of {BASELINE_EXPERIMENTS}'
+        )
+        self.experiment = vars(main_parser.parse_args())['experiment']
+        self.pipeline = DMRIRSupervisedPipeline(main_parser)
+        self.pipeline.init_pipeline("./configs/supervised_dmrir.yaml")
     
-    experiment = vars(main_parser.parse_args())['experiment']
+    def run(self):
+        train_loader, val_loader, test_loader = self.pipeline.prepare_data()
     
-    pipeline = DMRIRSupervisedPipeline(main_parser)
-    pipeline.init_pipeline("./configs/supervised_dmrir.yaml")
+        model = MODELS[self.experiment]().to(self.pipeline.config['device'])
+        with Logger(self.pipeline.config) as logger:
+            trainer = self.pipeline.prepare_trainer(model, logger)
+            self.pipeline.run(trainer, train_loader, val_loader, test_loader)        
+        
 
-    train_loader, val_loader, test_loader = pipeline.prepare_data()
-    
-    model = MODELS[experiment]().to(pipeline.config['device'])
-    with Logger(pipeline.config) as logger:
-        trainer = pipeline.prepare_trainer(model, logger)
-        pipeline.run(trainer, train_loader, val_loader, test_loader)
-    
-    
+
+
+if __name__ == '__main__':
+    experiments = DMRIRBaselineExperiments()
+    experiments.run()

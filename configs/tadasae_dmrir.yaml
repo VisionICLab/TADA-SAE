@@ -17,8 +17,11 @@ grad_clip: 1.0
 
 # Dataset
 data_root: ./data/dmrir/
-normal_dir: train/normal
-anomalous_dir: train/anomalous
+normal_dir_train: train/normal
+anomalous_dir_train: train/anomalous
+normal_dir_test: test/normal
+anomalous_dir_test: test/normal
+
 
 metrics:
   reconstruction: []
