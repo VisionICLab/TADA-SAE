@@ -1,3 +1,4 @@
+from argparse import ArgumentParser
 import os
 import torch
 from torch.nn import DataParallel
@@ -19,6 +20,9 @@ class SAEDMRIRPipeline(AbstractPipeline):
     """
     A pipeline for training on DMRIR dataset with Swapping Autoencoder
     """
+    
+    def __init__(self, main_parser=...):
+        super().__init__(main_parser)
     
     def init_pipeline(self, config_path=None):
         """
@@ -56,15 +60,14 @@ class SAEDMRIRPipeline(AbstractPipeline):
             additional_targets={"mask": "mask"},
         )
 
-        normal_path = os.path.join(self.config["data_root"], self.config["normal_dir"])
+        normal_path = os.path.join(self.config["data_root"], self.config["normal_dir_train"])
         normal_ds = DMRIRMatrixDataset(normal_path, transforms=preprocess, side="any")
         normal_train_ds, ano_val_ds = random_split(
             normal_ds,
             [int(len(normal_ds) * 0.9), len(normal_ds) - int(len(normal_ds) * 0.9)],
         )
 
-        ano_path = os.path.join(self.config["data_root"], self.config["anomalous_dir"])
-
+        ano_path = os.path.join(self.config["data_root"], self.config["anomalous_dir_train"])
         ano_ds = DMRIRMatrixDataset(ano_path, transforms=preprocess, side="any")
         ano_train_ds, ano_eval_ds = random_split(
             ano_ds, [int(len(ano_ds) * 0.8), len(ano_ds) - int(len(ano_ds) * 0.8)]

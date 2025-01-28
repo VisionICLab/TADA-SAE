@@ -26,13 +26,13 @@ LOSS_FUNCTIONS = {
 }
 
 class AbstractPipeline(metaclass=ABCMeta):
-    def __init__(self, main_parser: ArgumentParser=None):
+    def __init__(self, main_parser=ArgumentParser()):
         """
         A base pipeline for training models and running experiments
         """
         self.config = {}
         
-        self.parser = ArgumentParser() if main_parser is None else main_parser
+        self.parser = main_parser
     
         self.parser.add_argument(
             "--log_dir",

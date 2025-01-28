@@ -22,10 +22,7 @@ anomalous_dir_train: train/anomalous
 normal_dir_test: test/normal
 anomalous_dir_test: test/normal
 
-
-metrics:
-  reconstruction: []
-  anomaly: []
+experiment: 'tadasae_svm'
 
 # scheduler:
 #   name: ExponentialLR
@@ -45,4 +42,4 @@ entity: ben_schmark
 project_name: thermanomaly
 project_group: sae_dmrir
 model_name: sae_dmrir_temperature_transfer
-run_name: sae_c16_s4_t1024_nopatchnce
+run_name: sae_c16_s4_t1024_test_tadasae

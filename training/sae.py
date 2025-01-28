@@ -15,7 +15,7 @@ from models.swapping_autoencoder.loss import (
     d_r1_loss,
 )
 from models.swapping_autoencoder import utils
-from inference.pipelines.sae import generate_interpolation
+from inference.pipelines.tadasae import generate_interpolation
 
 
 REF_CROP = 4

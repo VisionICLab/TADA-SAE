@@ -4,17 +4,35 @@ from training.logging.loggers import Logger
 from inference.pipelines.tadasae import SymmetryClassifierPipeline
 from sklearn.preprocessing import RobustScaler
 from sklearn.svm import SVC
+from sklearn.neural_network import MLPClassifier
 import numpy as np
 from datasets.dmrir_dataset import DMRIRLeftRightDataset
 import os
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 from inference.metrics import classification_report
+from argparse import ArgumentParser
+
+TADASAE_EXPERIMENTS = ['tadasae_svm', 'tadasae_linear']
 
 class TADASAEExperiment:
     def __init__(self):
+        main_parser = ArgumentParser()
+        main_parser.add_argument(
+            '--experiment',
+            type=str,
+            default='tadasae_svm',
+            choices=TADASAE_EXPERIMENTS,
+            help=f'Experiment choice, one of {TADASAE_EXPERIMENTS}'
+        )
         
-        self.training_pipeline = SAEDMRIRPipeline()
+        main_parser.add_argument(
+            '--checkpoint',
+            type=str,
+            required=False
+        )
+           
+        self.training_pipeline = SAEDMRIRPipeline(main_parser)
         self.training_pipeline.init_pipeline("./configs/tadasae_dmrir.yaml")
         self.config = self.training_pipeline.get_config()
 
@@ -49,9 +67,15 @@ class TADASAEExperiment:
         ).to(self.config["device"])
 
         self.trainer = self.training_pipeline.prepare_trainer(encoder, generator, str_projectors, discriminator, cooccur, Logger(self.config))
-        self.inference_pipeline = SymmetryClassifierPipeline(self.trainer.enc_ema, RobustScaler(), SVC(probability=True), self.config['device'])
+        if 'checkpoint' in self.config:
+            self.trainer.load_state(self.config['checkpoint'])
+        
+        classifier = SVC(probability=True) if self.config['experiment'] == 'tadasae_svm' else MLPClassifier(hidden_layer_sizes=[])
+        
+        self.inference_pipeline = SymmetryClassifierPipeline(self.trainer.enc_ema, RobustScaler(), classifier, self.config['device'])
+        
         self.preprocessing = A.Compose([
-            A.Resize(self.config['input_size'][1:]),
+            A.Resize(self.config['input_size'][1], self.config['input_size'][2]),
             A.Normalize(self.config['mean'], self.config['std']),
             ToTensorV2()
         ], additional_targets={"image0": "image", "mask0": "mask"})
@@ -59,7 +83,7 @@ class TADASAEExperiment:
         
     def run(self):
         normal_loader, val_loader = self.training_pipeline.prepare_data()
-        self.training_pipeline.pipeline.run(self.trainer, normal_loader, val_loader)
+        self.training_pipeline.run(self.trainer, normal_loader, val_loader)
     
     def test(self, seeds=1):
         train_normal_path = os.path.join(self.config['data_root'], self.config['normal_dir_train'])
@@ -79,16 +103,17 @@ class TADASAEExperiment:
         for i in range(seeds):
             np.random.seed(i)
             self.inference_pipeline.fit_from_dataset(normal_ds_train, anomalous_ds_train)
-            (y_normal_pred, y_normal_gt), (y_anomalous_pred, y_anomalous_gt) = (
-                self.inference_pipeline.pipeline.evaluate_dataset(normal_ds_test, anomalous_ds_test)
+            (y_normal_pred, _), (y_anomalous_pred, _) = (
+                self.inference_pipeline.evaluate_dataset(normal_ds_test, anomalous_ds_test)
             )
-            # proba of being anomalous [:,1]
             y_n_preds.append(y_normal_pred[:,1]) 
             y_a_preds.append(y_anomalous_pred[:,1])
             self.inference_pipeline.reset()
         classification_report(y_n_preds, y_a_preds)
 
+
 if __name__ == '__main__':
     experiment = TADASAEExperiment()
-    experiment.run()
+    if 'checkpoint' not in experiment.config:
+        experiment.run()
     experiment.test()
