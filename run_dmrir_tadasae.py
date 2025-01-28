@@ -12,6 +12,7 @@ import albumentations as A
 from albumentations.pytorch import ToTensorV2
 from inference.metrics import classification_report
 from argparse import ArgumentParser
+from tqdm import trange
 
 TADASAE_EXPERIMENTS = ['tadasae_svm', 'tadasae_linear']
 
@@ -100,7 +101,7 @@ class TADASAEExperiment:
         normal_ds_test = DMRIRLeftRightDataset(test_normal_path, self.preprocessing, return_mask=False, flip_align=False)
         anomalous_ds_test = DMRIRLeftRightDataset(test_anomalous_path, self.preprocessing, return_mask=False, flip_align=False)
         
-        for i in range(seeds):
+        for i in trange(seeds, desc=f'Testing classification over {seeds} seeds'):
             np.random.seed(i)
             self.inference_pipeline.fit_from_dataset(normal_ds_train, anomalous_ds_train)
             (y_normal_pred, _), (y_anomalous_pred, _) = (

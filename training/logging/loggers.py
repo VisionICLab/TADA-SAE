@@ -53,6 +53,20 @@ class Logger:
         )
         self.log_each = self.config["log_each"]
         self.with_wandb = self.config["wandb"]
+        
+        if self.config["log_dir"]:
+            Path(os.path.join(self.config["log_dir"], "checkpoints")).mkdir(
+                parents=True, exist_ok=True
+            )
+
+        if self.with_wandb:
+            wandb.init(
+                entity=self.config["entity"],
+                project=self.config["project_name"],
+                group=self.config["project_group"],
+                name=self.config["run_name"] if "run_name" in self.config else None,
+                config=self.config,
+            )
 
 
 
@@ -91,22 +105,6 @@ class Logger:
     def compile_logs(self):
         for key, value in self.logs.items():
             self.compiled_logs[key] = value["value"] / value["it"]
-
-    def __enter__(self):
-        if self.config["log_dir"]:
-            Path(os.path.join(self.config["log_dir"], "checkpoints")).mkdir(
-                parents=True, exist_ok=True
-            )
-
-        if self.with_wandb:
-            wandb.init(
-                entity=self.config["entity"],
-                project=self.config["project_name"],
-                group=self.config["project_group"],
-                name=self.config["run_name"] if "run_name" in self.config else None,
-                config=self.config,
-            )
-        return self
 
     def reset_logs(self):
         self.logs = {}
