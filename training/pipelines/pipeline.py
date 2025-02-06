@@ -128,7 +128,8 @@ class AbstractPipeline(metaclass=ABCMeta):
 
     def set_seed(self, seed=None):
         self.config["seed"] = seed
-        torch.manual_seed(seed)
+        if seed is not None:
+            torch.manual_seed(seed)
 
     def init_pipeline(self, config_path=None):
         """
@@ -149,8 +150,7 @@ class AbstractPipeline(metaclass=ABCMeta):
 
         os.makedirs(self.config["log_dir"], exist_ok=True)
 
-        if "seed" in self.config:
-            self.set_seed(self.config["seed"])
+        self.set_seed(self.config["seed"])
 
         self.optimizer_class = OPTIMIZERS[self.config["optimizer"]["name"]]
 

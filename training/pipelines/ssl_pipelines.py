@@ -49,26 +49,27 @@ class SAEDMRIRPipeline(AbstractPipeline):
         if "seed" in self.config:
             self.set_seed(self.config["seed"])
     
-    def prepare_data(self):
+    def prepare_data(self, transforms=None):
         _, h, w = self.config["input_size"]
-        preprocess = A.Compose(
-            [
-                A.Resize(h, w),
-                A.Normalize(self.config["mean"], self.config["std"]),
-                ToTensorV2(),
-            ],
-            additional_targets={"mask": "mask"},
-        )
+        if transforms is None:
+            transforms = A.Compose(
+                [
+                    A.Resize(h, w),
+                    A.Normalize(self.config["mean"], self.config["std"]),
+                    ToTensorV2(),
+                ],
+                additional_targets={"image0": "image", "mask0": "mask"},
+            )
 
         normal_path = os.path.join(self.config["data_root"], self.config["normal_dir_train"])
-        normal_ds = DMRIRMatrixDataset(normal_path, transforms=preprocess, side="any")
+        normal_ds = DMRIRMatrixDataset(normal_path, transforms, side="any")
         normal_train_ds, ano_val_ds = random_split(
             normal_ds,
             [int(len(normal_ds) * 0.9), len(normal_ds) - int(len(normal_ds) * 0.9)],
         )
 
         ano_path = os.path.join(self.config["data_root"], self.config["anomalous_dir_train"])
-        ano_ds = DMRIRMatrixDataset(ano_path, transforms=preprocess, side="any")
+        ano_ds = DMRIRMatrixDataset(ano_path, transforms, side="any")
         ano_train_ds, ano_eval_ds = random_split(
             ano_ds, [int(len(ano_ds) * 0.8), len(ano_ds) - int(len(ano_ds) * 0.8)]
         )

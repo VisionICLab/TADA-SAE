@@ -20,9 +20,7 @@ data_root: ./data/dmrir/
 normal_dir_train: train/normal
 anomalous_dir_train: train/anomalous
 normal_dir_test: test/normal
-anomalous_dir_test: test/normal
-
-experiment: 'tadasae_svm'
+anomalous_dir_test: test/anomalous
 
 # scheduler:
 #   name: ExponentialLR
@@ -34,9 +32,13 @@ num_workers: 0
 log_each: 1000
 log_dir: ./logs/sae_dmrir
 checkpoint_each: 100000
-#seed: None
-device: cuda
+seed: null
+checkpoint: null
 
+experiment: 'tadasae_svm'
+test_only: False
+
+device: cuda
 wandb: False
 entity: ben_schmark
 project_name: thermanomaly

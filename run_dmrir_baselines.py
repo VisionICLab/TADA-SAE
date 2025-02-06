@@ -41,8 +41,6 @@ class DMRIRBaselineExperiments:
             self.pipeline.run(trainer, train_loader, val_loader, test_loader)        
         
 
-
-
 if __name__ == '__main__':
     experiments = DMRIRBaselineExperiments()
     experiments.run()

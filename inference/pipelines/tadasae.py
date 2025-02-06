@@ -222,11 +222,8 @@ class SymmetryClassifierPipeline(SymmetryHybridPipeline):
             sklearn.base.BaseEstimator: The fitted classifier
         """
         X_normal = self.build_symmetry_features(normal_dataset)
-        
-        X_anomalous = None
-        if anomalous_dataset is not None:
-            X_anomalous = self.build_symmetry_features(anomalous_dataset)
-        return self.fit_from_features(X_normal, X_anomalous)
+        X_anomalous = self.build_symmetry_features(anomalous_dataset)
+        self.fit_from_features(X_normal, X_anomalous)
 
     def fit_from_features(self, normal_features, anomalous_features):
         """
@@ -245,7 +242,6 @@ class SymmetryClassifierPipeline(SymmetryHybridPipeline):
         X, y = shuffle(X, y)
         X = self.scaler.fit_transform(X)
         self.classifier.fit(X, y)
-        return self.classifier
 
     def evaluate_features(self, normal_features, anomalous_features):
         """
