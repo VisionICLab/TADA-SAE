@@ -1,16 +1,16 @@
 import torch
 from torch import nn
 
-class LinearClassificationHead(nn.Module):
-    def __init__(self, texture_dims=1024):
+class LatentModel(nn.Module):
+    def __init__(self):
         super().__init__()
-        self.head = nn.Sequential(
-            nn.Linear(texture_dims,1),
-            nn.Sigmoid()
-        )
         
     def forward(self, x):
-        return self.head(x)
+        return x
+    
+    @torch.no_grad()
+    def forward_latents(self, x):
+        return x
 
 
 class ConvEncoder(nn.Module):
@@ -95,7 +95,7 @@ class ConvDecoder(nn.Module):
     def forward(self, x):
         return self.decoder(x)
 
-class ConvAE(nn.Module):
+class ConvAE(LatentModel):
     """
     A convolutional autoencoder encoder compressing the input from the original input space to a latent space
     and then reconstructing the input from the latent space.
@@ -121,34 +121,49 @@ class ConvAE(nn.Module):
         x = self.encoder(x)
         x = self.decoder(x)
         return x
+    
+    @torch.no_grad()
+    def forward_latents(self, x):
+        return self.encoder(x).flatten()
+
+
+class LinearClassificationHead(nn.Module):
+    def __init__(self, texture_dims=1024):
+        super().__init__()
+        self.head = nn.Sequential(
+            nn.Linear(texture_dims,1),
+            nn.Sigmoid()
+        )
+        
+    def forward(self, x):
+        return self.head(x)
 
         
-
-class LSAEClassifierFullIm(nn.Module):
-
+class LSAEClassifierFullIm(LatentModel):
+    """
+    From ablation study on DMRIR (LSAE full im.)
+    Trainable linear head on texture features from frozen encoder
+    """
     def __init__(self, trained_tex_encoder, texture_dims=1024, with_linear_head=True, device='cuda'):
-        """
-        From ablation study on DMRIR (LSAE full im.)
-        Trainable linear head on texture features from frozen encoder
-        """
-
         super().__init__()
         self.trained_tex_encoder = trained_tex_encoder.eval()
         self.with_linear_head = with_linear_head
         self.head = LinearClassificationHead(texture_dims)
         self.device = device
-        
     
     def forward(self, x):
         """
         Args:
             x (torch.Tensor): Full thermal image without applied mask
         """
-        with torch.no_grad():
-            _, out = self.trained_tex_encoder(x.to(self.device), run_str=False, multi_tex=False)
+        out = self.forward_latents(x)
         if self.with_linear_head:
             out = self.head(out)
         return out
+    
+    @torch.no_grad()
+    def forward_latents(self, x):
+        return self.trained_tex_encoder(x.to(self.device), run_str=False, multi_tex=False)[-1]
 
     
 class LSAEClassifierLeftRight(LSAEClassifierFullIm):
@@ -161,11 +176,14 @@ class LSAEClassifierLeftRight(LSAEClassifierFullIm):
 
     def forward(self, x):
         l_x, r_x = x
-        with torch.no_grad():
-            _, l_t = self.trained_tex_encoder(l_x.to(self.device), run_str=False, multi_tex=False)
-            _, r_t = self.trained_tex_encoder(r_x.to(self.device), run_str=False, multi_tex=False)
-            out = torch.abs(l_t - r_t)
-            
+        out = self.forward_latents(l_x, r_x)
         if self.with_linear_head:
             out = self.head(out)
         return out
+    
+    @torch.no_grad()
+    def forward_latents(self, l_x, r_x):
+        _, l_t = self.trained_tex_encoder(l_x.to(self.device), run_str=False, multi_tex=False)
+        _, r_t = self.trained_tex_encoder(r_x.to(self.device), run_str=False, multi_tex=False)
+        return torch.abs(l_t - r_t)
+    
