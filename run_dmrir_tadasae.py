@@ -5,39 +5,20 @@ from inference.pipelines.tadasae import SymmetryClassifierPipeline
 from sklearn.preprocessing import RobustScaler
 from sklearn.svm import SVC
 from sklearn.neural_network import MLPClassifier
-import numpy as np
 from datasets.dmrir_dataset import DMRIRLeftRightDataset
 import os
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 from inference.metrics import classification_report
-from argparse import ArgumentParser
 from tqdm import trange
+from experiment import AbstractExperiment
 
 
-TADASAE_EXPERIMENTS = ['tadasae_svm', 'tadasae_linear']
-
-class TADASAEExperiment:
+class TADASAEExperiment(AbstractExperiment):
     def __init__(self):
-        main_parser = ArgumentParser()
-        main_parser.add_argument(
-            '--experiment',
-            type=str,
-            default='tadasae_svm',
-            choices=TADASAE_EXPERIMENTS,
-            help=f'Experiment choice, one of {TADASAE_EXPERIMENTS}'
-        )
-        
-        main_parser.add_argument(
-            '--checkpoint',
-            type=str,
-            required=False,
-            help='A path to the .pth file of the trained SAE model'
-        )
-        
-        main_parser.add_argument('--test_only', action="store_true")
-           
-        self.training_pipeline = SAEDMRIRPipeline(main_parser)
+        super().__init__(['tadasae_svm', 'tadasae_linear'])
+  
+        self.training_pipeline = SAEDMRIRPipeline(self.main_parser)
         self.training_pipeline.init_pipeline("./configs/tadasae_dmrir.yaml")
         self.config = self.training_pipeline.get_config()
 
