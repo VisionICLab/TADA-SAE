@@ -22,37 +22,7 @@ class TADASAEExperiment(AbstractExperiment):
         self.training_pipeline.init_pipeline("./configs/tadasae_dmrir.yaml")
         self.config = self.training_pipeline.get_config()
 
-        CHANNELS = self.config["channels"]
-        STRUCTURE_CHANNELS = self.config["struct_channels"]
-        TEXTURE_CHANNELS = self.config["text_channels"]
-
-        encoder = sae.encoders.PyramidEncoder(
-            CHANNELS,
-            structure_channel=STRUCTURE_CHANNELS,
-            texture_channel=TEXTURE_CHANNELS,
-            gray=True,
-        ).to(self.config["device"])
-
-        generator = sae.generators.Generator(
-            CHANNELS,
-            structure_channel=STRUCTURE_CHANNELS,
-            texture_channel=TEXTURE_CHANNELS,
-            gray=True,
-        ).to(self.config["device"])
-
-        str_projectors = sae.layers.MultiProjectors(
-            [CHANNELS, CHANNELS * 2, CHANNELS * 8], use_mlp=True
-        ).to(self.config["device"])
-
-        discriminator = sae.discriminators.Discriminator(
-            self.config["input_size"][-1], channel_multiplier=1, gray=True
-        ).to(self.config["device"])
-
-        cooccur = sae.discriminators.CooccurDiscriminator(
-            CHANNELS, size=self.config["input_size"][-1] * self.config["max_patch_size"], gray=True
-        ).to(self.config["device"])
-
-        self.trainer = self.training_pipeline.prepare_trainer(encoder, generator, str_projectors, discriminator, cooccur, Logger(self.config))
+        self.trainer = self.training_pipeline.prepare_trainer(Logger(self.config))
         if self.config['checkpoint'] is not None:
             self.trainer.load_state(self.config['checkpoint'])
         

@@ -3,6 +3,7 @@ import os
 import yaml
 from argparse import ArgumentParser
 import torch
+from enum import Enum
 
 
 OPTIMIZERS = {
@@ -24,6 +25,11 @@ LOSS_FUNCTIONS = {
     "MSELoss": torch.nn.MSELoss,
     "BCELoss": torch.nn.BCELoss,
 }
+
+class TrainMode(Enum):
+    LR='left_right'
+    FULL='full_im'
+
 
 class AbstractPipeline(metaclass=ABCMeta):
     def __init__(self, main_parser=ArgumentParser()):

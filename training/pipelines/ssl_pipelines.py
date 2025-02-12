@@ -8,21 +8,25 @@ from datasets.dmrir_dataset import DMRIRMatrixDataset
 from datasets.utils import InfiniteDataLoader
 import numpy as np
 from torch.utils.data import random_split
-from training.pipelines.pipeline import AbstractPipeline
+from training.pipelines.pipeline import AbstractPipeline, TrainMode
 import yaml
 from models.ema import EMA
 from models.utils import count_parameters
 from training.sae import SAETrainer
+from training.trainers import ReconstructionTrainer
 from preprocessing.ada_aug import ADAAugment
+import models.swapping_autoencoder as sae
 
 
-class SAEDMRIRPipeline(AbstractPipeline):
+
+
+class AEDMRIRPipeline(AbstractPipeline):
     """
-    A pipeline for training on DMRIR dataset with Swapping Autoencoder
+    A pipeline for training on DMRIR dataset with convolutional autoencoder
     """
-    
     def __init__(self, main_parser=...):
         super().__init__(main_parser)
+        
     
     def init_pipeline(self, config_path=None):
         """
@@ -48,8 +52,8 @@ class SAEDMRIRPipeline(AbstractPipeline):
 
         if "seed" in self.config:
             self.set_seed(self.config["seed"])
-    
-    def prepare_data(self, transforms=None):
+            
+    def prepare_data(self, transforms=None, mode=TrainMode.FULL):
         _, h, w = self.config["input_size"]
         if transforms is None:
             transforms = A.Compose(
@@ -60,14 +64,15 @@ class SAEDMRIRPipeline(AbstractPipeline):
                 ],
                 additional_targets={"image0": "image", "mask0": "mask"},
             )
-
         normal_path = os.path.join(self.config["data_root"], self.config["normal_dir_train"])
-        normal_ds = DMRIRMatrixDataset(normal_path, transforms, side="any")
+        side = 'both' if mode == TrainMode.FULL else 'any'
+        normal_ds = DMRIRMatrixDataset(normal_path, transforms, side)
+
         normal_train_ds, ano_val_ds = random_split(
             normal_ds,
             [int(len(normal_ds) * 0.9), len(normal_ds) - int(len(normal_ds) * 0.9)],
         )
-
+        
         ano_path = os.path.join(self.config["data_root"], self.config["anomalous_dir_train"])
         ano_ds = DMRIRMatrixDataset(ano_path, transforms, side="any")
         ano_train_ds, ano_eval_ds = random_split(
@@ -93,7 +98,56 @@ class SAEDMRIRPipeline(AbstractPipeline):
         )
         return train_loader, val_loader
     
-    def prepare_trainer(self, enc, gen, str_proj, disc, cooccur, logger):
+    def prepare_trainer(self, model, logger):
+        optimizer, loss_fn, scheduler = self._prepare_training(model)
+        return ReconstructionTrainer(model, optimizer, loss_fn, self.config, logger, scheduler)
+
+
+class SAEDMRIRPipeline(AEDMRIRPipeline):
+    """
+    A pipeline for training on DMRIR dataset with Swapping Autoencoder
+    """
+    def __init__(self, main_parser=...):
+        super().__init__(main_parser)
+        
+    def prepare_data(self, transforms=None):
+        return super().prepare_data(transforms, TrainMode.LR)
+
+    def _prepare_training(self):
+        CHANNELS = self.config["channels"]
+        STRUCTURE_CHANNELS = self.config["struct_channels"]
+        TEXTURE_CHANNELS = self.config["text_channels"]
+
+        encoder = sae.encoders.PyramidEncoder(
+            CHANNELS,
+            structure_channel=STRUCTURE_CHANNELS,
+            texture_channel=TEXTURE_CHANNELS,
+            gray=True,
+        ).to(self.config["device"])
+
+        generator = sae.generators.Generator(
+            CHANNELS,
+            structure_channel=STRUCTURE_CHANNELS,
+            texture_channel=TEXTURE_CHANNELS,
+            gray=True,
+        ).to(self.config["device"])
+
+        str_projectors = sae.layers.MultiProjectors(
+            [CHANNELS, CHANNELS * 2, CHANNELS * 8], use_mlp=True
+        ).to(self.config["device"])
+
+        discriminator = sae.discriminators.Discriminator(
+            self.config["input_size"][-1], channel_multiplier=1, gray=True
+        ).to(self.config["device"])
+
+        cooccur = sae.discriminators.CooccurDiscriminator(
+            CHANNELS, size=self.config["input_size"][-1] * self.config["max_patch_size"], gray=True
+        ).to(self.config["device"])
+        
+        return encoder, generator, str_projectors, discriminator, cooccur
+    
+    def prepare_trainer(self, logger):
+        enc, gen, str_proj, disc, cooccur = self._prepare_training()
         print(f"Encoder: {count_parameters(enc)}")
         print(f"Generator: {count_parameters(gen)}")
         print(f"StrProjectors: {count_parameters(str_proj)}")
