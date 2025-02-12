@@ -1,6 +1,6 @@
 import torch
 from tqdm import tqdm, trange
-from abc import ABCMeta
+from abc import ABCMeta, abstractmethod
 import numpy as np
 import os
 from inference import metrics
@@ -28,26 +28,19 @@ class Trainer(metaclass=ABCMeta):
         self.model = model
         self.optimizer = optimizer
         self.loss_fn = loss_fn
+        self.scheduler = scheduler
         self.config = config
         self.logger = logger
-        self.scheduler = scheduler
         self.current_epoch = 0
 
+    @abstractmethod
     def train_step(self, x):
-        x = x.to(self.config["device"])
-        self.optimizer.zero_grad()
-        outputs = self.model(x)
-        train_loss = self.loss_fn(outputs, x)
-        train_loss.backward()
-        self.optimizer.step()
-        return train_loss.item(), outputs
+        pass
 
+    @abstractmethod
     @torch.no_grad()
     def eval_step(self, x):
-        x = x.to(self.config["device"])
-        outputs = self.model(x)[0]
-        eval_loss = self.loss_fn(outputs, x)
-        return eval_loss.item(), outputs, x
+        pass
 
     def train(self, train_loader):
         """
@@ -144,13 +137,36 @@ class ReconstructionTrainer(Trainer):
     A trainer for reconstruction models, such as autoencoders and diffusion models
     """
 
-    def __init__(self, model, optimizer, loss_fn, config, logger, scheduler=None):
-        super().__init__(model, optimizer, loss_fn, config, logger, scheduler)
+    def __init__(self, encoder, generator, optimizer, loss_fn, config, logger, scheduler=None):
+        super().__init__(encoder, optimizer, loss_fn, config, logger, scheduler)
+        self.generator = generator
         # self.metrics = {"reconstruction": {}}
         # for metric in config["metrics"]["reconstruction"]:
         #     self.metrics["reconstruction"][metric] = getattr(
         #         reconstruction, metric
         #     )().to(config["device"])
+    
+    @property
+    def encoder(self):
+        return self.model
+    
+    def train_step(self, x):
+        x = x.to(self.config["device"])
+        self.optimizer.zero_grad()
+        z = self.encoder(x)
+        y = self.generator(z)
+        train_loss = self.loss_fn(y, x)
+        train_loss.backward()
+        self.optimizer.step()
+        return train_loss.item(), y
+    
+    def eval_step(self, x):
+        x = x.to(self.config["device"])
+        z = self.encoder(x)
+        y = self.generator(z)
+        eval_loss = self.loss_fn(y, x)
+        return eval_loss.item(), y, x
+    
 
     def _make_visualizations(self, dataset, size=5, title="Reconstructions"):
         random_sampes_idx = np.random.randint(len(dataset), size=size)
@@ -197,6 +213,7 @@ class ReconstructionTrainer(Trainer):
                 title=f"Reconstruction at epoch {self.current_epoch}",
             )
             self.logger.register_visualization("reconstruction", f)
+
 
 
 class SupervisedTrainer(Trainer):

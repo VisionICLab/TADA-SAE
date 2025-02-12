@@ -325,6 +325,8 @@ class SAETrainer(Trainer):
             }
         )
 
+
+    
     def train(self, train_loader):
         self.encoder.train()
         self.str_projector.train()

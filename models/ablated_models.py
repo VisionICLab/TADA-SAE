@@ -66,7 +66,7 @@ class ConvDecoder(nn.Module):
     """
 
     def __init__(
-        self, z_dim, c_hid, c_in, act_fn=nn.LeakyReLU(0.1), output_act_fn=nn.Sigmoid()
+        self, z_dim, c_hid, c_out, act_fn=nn.LeakyReLU(0.1), output_act_fn=nn.Sigmoid()
     ):
         super(ConvDecoder, self).__init__()
         self.decoder = nn.Sequential(
@@ -88,7 +88,7 @@ class ConvDecoder(nn.Module):
             act_fn,
             nn.ConvTranspose2d(c_hid, c_hid, kernel_size=4, stride=2, padding=1),
             act_fn,
-            nn.ConvTranspose2d(c_hid, c_in, kernel_size=4, stride=2, padding=1),
+            nn.ConvTranspose2d(c_hid, c_out, kernel_size=4, stride=2, padding=1),
             output_act_fn,
         )
 
