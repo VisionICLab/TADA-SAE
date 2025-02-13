@@ -29,15 +29,8 @@ class TADASAEExperiment(AbstractExperiment):
         classifier = SVC(probability=True) if self.config['experiment'] == 'tadasae_svm' else MLPClassifier(hidden_layer_sizes=[])
         self.inference_pipeline = SymmetryClassifierPipeline(self.trainer.enc_ema, RobustScaler(), classifier, self.config['device'])
         
-        self.preprocessing = A.Compose([
-            A.Resize(self.config['input_size'][1], self.config['input_size'][2]),
-            A.Normalize(self.config['mean'], self.config['std']),
-            ToTensorV2()
-        ], additional_targets={"image0": "image", "mask0": "mask"})
-        
-        
     def run(self):
-        normal_loader, val_loader = self.training_pipeline.prepare_data(self.preprocessing)
+        normal_loader, val_loader = self.training_pipeline.prepare_data()
         self.training_pipeline.run(self.trainer, normal_loader, val_loader)
     
     def test(self, seeds=1):

@@ -16,7 +16,8 @@ from training.sae import SAETrainer
 from training.trainers import ReconstructionTrainer
 from preprocessing.ada_aug import ADAAugment
 import models.swapping_autoencoder as sae
-
+from models.ablated_models import ConvEncoder, ConvDecoder
+from training.logging.loggers import Logger
 
 
 
@@ -53,12 +54,11 @@ class AEDMRIRPipeline(AbstractPipeline):
         if "seed" in self.config:
             self.set_seed(self.config["seed"])
             
-    def prepare_data(self, transforms=None, mode=TrainMode.FULL):
-        _, h, w = self.config["input_size"]
+    def prepare_data(self, transforms=..., mode=TrainMode.FULL):
         if transforms is None:
             transforms = A.Compose(
                 [
-                    A.Resize(h, w),
+                    A.Resize(self.config["input_size"][1], self.config["input_size"][-1]),
                     A.Normalize(self.config["mean"], self.config["std"]),
                     ToTensorV2(),
                 ],
@@ -98,9 +98,14 @@ class AEDMRIRPipeline(AbstractPipeline):
         )
         return train_loader, val_loader
     
-    def prepare_trainer(self, model, logger):
-        optimizer, loss_fn, scheduler = self._prepare_training(model)
-        return ReconstructionTrainer(model, optimizer, loss_fn, self.config, logger, scheduler)
+    def _prepare_training(self):
+        enc = ConvEncoder(1024, 8, 1).to(self.config['device'])  # TODO: CHange for custom dimensions from config file
+        dec = ConvDecoder(1024, 8, 1).to(self.config['device'])
+        return enc, dec, super()._prepare_training(list(enc.parameters())+list(dec.parameters))
+
+    def prepare_trainer(self):
+        enc, dec, optimizer, loss_fn, scheduler = self._prepare_training()
+        return ReconstructionTrainer(enc, dec, optimizer, loss_fn, self.config, Logger(self.config), scheduler)
 
 
 class SAEDMRIRPipeline(AEDMRIRPipeline):
@@ -146,7 +151,7 @@ class SAEDMRIRPipeline(AEDMRIRPipeline):
         
         return encoder, generator, str_projectors, discriminator, cooccur
     
-    def prepare_trainer(self, logger):
+    def prepare_trainer(self):
         enc, gen, str_proj, disc, cooccur = self._prepare_training()
         print(f"Encoder: {count_parameters(enc)}")
         print(f"Generator: {count_parameters(gen)}")
@@ -182,7 +187,7 @@ class SAEDMRIRPipeline(AEDMRIRPipeline):
             gen_ema,
             ada_aug,
             self.config,
-            logger,
+            Logger(self.config)
         )
         return trainer
 

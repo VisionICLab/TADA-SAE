@@ -155,28 +155,26 @@ class AbstractPipeline(metaclass=ABCMeta):
                 self.config[k] = v
 
         os.makedirs(self.config["log_dir"], exist_ok=True)
-
         self.set_seed(self.config["seed"])
 
-        self.optimizer_class = OPTIMIZERS[self.config["optimizer"]["name"]]
 
-        self.scheduler_class = (
+    def _prepare_training(self, parameters):
+        optimizer_class = OPTIMIZERS[self.config["optimizer"]["name"]]
+        scheduler_class = (
             SCHEDULERS[self.config["scheduler"]["name"]]
             if "scheduler" in self.config.keys()
             else None
         )
+        loss_fn_class = LOSS_FUNCTIONS[self.config["loss_fn"]["name"]]
         
-        self.loss_fn_class = LOSS_FUNCTIONS[self.config["loss_fn"]["name"]]
-
-    def _prepare_training(self, model):
-        optimizer = self.optimizer_class(
-            model.parameters(), **self.config["optimizer"]["kwargs"]
+        optimizer = optimizer_class(
+            parameters **self.config["optimizer"]["kwargs"]
         )
-        loss_fn = self.loss_fn_class(**self.config["loss_fn"]["kwargs"]).to(
+        loss_fn = loss_fn_class(**self.config["loss_fn"]["kwargs"]).to(
             self.config["device"]
         )
-        if self.scheduler_class is not None:
-            scheduler = self.scheduler_class(
+        if scheduler_class is not None:
+            scheduler = scheduler_class(
                 optimizer, **self.config["scheduler"]["kwargs"]
             )
         else:
