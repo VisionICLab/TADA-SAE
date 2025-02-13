@@ -33,6 +33,10 @@ class Trainer(metaclass=ABCMeta):
         self.logger = logger
         self.current_epoch = 0
 
+    @property
+    def encoder(self):
+        return self.model
+    
     @abstractmethod
     def train_step(self, x):
         pass
@@ -145,10 +149,6 @@ class ReconstructionTrainer(Trainer):
         #     self.metrics["reconstruction"][metric] = getattr(
         #         reconstruction, metric
         #     )().to(config["device"])
-    
-    @property
-    def encoder(self):
-        return self.model
     
     def train_step(self, x):
         x = x.to(self.config["device"])

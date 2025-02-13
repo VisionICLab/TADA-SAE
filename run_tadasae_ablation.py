@@ -1,7 +1,10 @@
 from experiment import AbstractExperiment
 from training.pipelines.ssl_pipelines import AEDMRIRPipeline, SAEDMRIRPipeline
 from enum import Enum
-
+from inference.pipelines.tadasae import SymmetryClassifierPipeline, AnomalyDetectionPipeline
+from sklearn.preprocessing import RobustScaler
+from sklearn.svm import SVC
+from training.pipelines.pipeline import TrainMode
 
 class ModelTypes(Enum):
     LSAE='lsae'
@@ -19,12 +22,14 @@ class TADASAEAblationExperiments(AbstractExperiment):
             self.training_pipeline = AEDMRIRPipeline(self.main_parser)
         else:
             self.training_pipeline = SAEDMRIRPipeline(self.main_parser)
+            
+        self.trainer = self.training_pipeline.prepare_trainer()
     
     def run(self):
         train_loader, val_loader = self.training_pipeline.prepare_data(mode=self.mode)
-        trainer = self.training_pipeline.prepare_trainer()
-        self.training_pipeline.run(trainer, train_loader, val_loader)
-        #self.inference_pipeline = SymmetryClassifierPipeline(self.trainer.enc_ema, RobustScaler(), classifier, self.config['device'])
-
+        self.training_pipeline.run(self.trainer, train_loader, val_loader)
+        
     def test(self, seeds=1):
-        pass
+        PIPELINE_CLASS = SymmetryClassifierPipeline if self.mode == TrainMode.LR else AnomalyDetectionPipeline
+        inference_pipeline = PIPELINE_CLASS(self.trainer.encoder, RobustScaler(), SVC(probability=True))
+    

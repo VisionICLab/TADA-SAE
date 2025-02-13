@@ -37,7 +37,7 @@ class AnomalyDetectionPipeline:
         self.device = encoder.device
         self.encoder = encoder.eval()
         self.scaler = scaler
-        self.classifier=classifier
+        self.classifier = classifier
 
     def reset(self):
         """
@@ -90,8 +90,9 @@ class SymmetryClassifierPipeline(AnomalyDetectionPipeline):
     """
     A pipeline for training and evaluating a symmetry detection model using a supervised approach.
     """
-    def __init__(self, sae_texture_encoder, scaler, classifier, device="cpu"):
-        super().__init__(sae_texture_encoder, scaler, classifier, device)
+    def __init__(self, sae_texture_encoder, scaler, classifier):
+        super().__init__(sae_texture_encoder, scaler, classifier)
+        self.device = sae_texture_encoder.device
     
     def build_features(self, dataset):
         """
