@@ -168,7 +168,7 @@ class AbstractPipeline(metaclass=ABCMeta):
         loss_fn_class = LOSS_FUNCTIONS[self.config["loss_fn"]["name"]]
         
         optimizer = optimizer_class(
-            parameters **self.config["optimizer"]["kwargs"]
+            parameters, **self.config["optimizer"]["kwargs"]
         )
         loss_fn = loss_fn_class(**self.config["loss_fn"]["kwargs"]).to(
             self.config["device"]

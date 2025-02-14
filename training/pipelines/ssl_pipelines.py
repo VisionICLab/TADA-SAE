@@ -64,17 +64,19 @@ class AEDMRIRPipeline(AbstractPipeline):
                 ],
                 additional_targets={"image0": "image", "mask0": "mask"},
             )
+
         normal_path = os.path.join(self.config["data_root"], self.config["normal_dir_train"])
+        ano_path = os.path.join(self.config["data_root"], self.config["anomalous_dir_train"])
+
         side = 'both' if mode == TrainMode.FULL else 'any'
-        normal_ds = DMRIRMatrixDataset(normal_path, transforms, side)
+        normal_ds = DMRIRMatrixDataset(normal_path, transforms, side, return_mask=False)
+        ano_ds = DMRIRMatrixDataset(ano_path, transforms, side, return_mask=False)
 
         normal_train_ds, ano_val_ds = random_split(
             normal_ds,
             [int(len(normal_ds) * 0.9), len(normal_ds) - int(len(normal_ds) * 0.9)],
         )
         
-        ano_path = os.path.join(self.config["data_root"], self.config["anomalous_dir_train"])
-        ano_ds = DMRIRMatrixDataset(ano_path, transforms, side="any")
         ano_train_ds, ano_eval_ds = random_split(
             ano_ds, [int(len(ano_ds) * 0.8), len(ano_ds) - int(len(ano_ds) * 0.8)]
         )
@@ -101,12 +103,14 @@ class AEDMRIRPipeline(AbstractPipeline):
     def _prepare_training(self):
         enc = ConvEncoder(1024, 8, 1).to(self.config['device'])  # TODO: CHange for custom dimensions from config file
         dec = ConvDecoder(1024, 8, 1).to(self.config['device'])
-        return enc, dec, super()._prepare_training(list(enc.parameters())+list(dec.parameters))
+        return enc, dec, *super()._prepare_training(list(enc.parameters())+list(dec.parameters()))
 
     def prepare_trainer(self):
         enc, dec, optimizer, loss_fn, scheduler = self._prepare_training()
         return ReconstructionTrainer(enc, dec, optimizer, loss_fn, self.config, Logger(self.config), scheduler)
 
+    def run(self, trainer, train_loader, val_loader):
+        return trainer.fit(train_loader, val_loader)
 
 class SAEDMRIRPipeline(AEDMRIRPipeline):
     """
@@ -115,8 +119,8 @@ class SAEDMRIRPipeline(AEDMRIRPipeline):
     def __init__(self, main_parser=...):
         super().__init__(main_parser)
         
-    def prepare_data(self, transforms=None):
-        return super().prepare_data(transforms, TrainMode.LR)
+    # def prepare_data(self, transforms=None, **kwargs):
+    #     return super().prepare_data(transforms, TrainMode.LR)
 
     def _prepare_training(self):
         CHANNELS = self.config["channels"]

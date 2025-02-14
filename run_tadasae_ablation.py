@@ -23,10 +23,18 @@ class TADASAEAblationExperiments(AbstractExperiment):
     def __init__(self):
         super().__init__(['ae_full_im', 'ae_left_right', 'lsae_left_right', 'lsae_full_im'])
         experiment_name = vars(self.main_parser.parse_args())['experiment']
-        self.model_type = experiment_name.split('_')[0]
-        self.mode = sum(experiment_name.split('_')[1:-1])
+        model_type = experiment_name.split('_')[0]
+        self.mode = '_'.join(experiment_name.split('_')[1:])
         
-        self.trainer = None
+        if model_type == ModelTypes.AE.value:
+            self.training_pipeline = AEDMRIRPipeline(self.main_parser)
+            self.training_pipeline.init_pipeline('configs/ae_dmrir.yaml')
+        else:
+            self.training_pipeline = SAEDMRIRPipeline(self.main_parser)
+            self.training_pipeline.init_pipeline('configs/tadasae_dmrir.yaml')
+
+        self.config = self.training_pipeline.config
+        self.trainer = self.training_pipeline.prepare_trainer()
         
         self.preprocessing = A.Compose(
                 [
@@ -36,18 +44,11 @@ class TADASAEAblationExperiments(AbstractExperiment):
                 ],
                 additional_targets={"image0": "image", "mask0": "mask"},
             )
-    
-    def run(self):
-        if self.model_type == ModelTypes.AE:
-            TRAINING_PIPELINE = AEDMRIRPipeline
-        else:
-            TRAINING_PIPELINE = SAEDMRIRPipeline
 
-        training_pipeline = TRAINING_PIPELINE(self.main_parser)
-        train_loader, val_loader = training_pipeline.prepare_data(transforms=self.preprocessing, mode=self.mode)
-        self.trainer = self.training_pipeline.prepare_trainer()
-        training_pipeline.run(self.trainer, train_loader, val_loader)
-        
+    def run(self):
+        train_loader, val_loader = self.training_pipeline.prepare_data(transforms=self.preprocessing, mode=self.mode)
+        self.training_pipeline.run(self.trainer, train_loader, val_loader)
+
     def test(self, seeds=1):       
         y_n_preds = []
         y_a_preds = []

@@ -1,4 +1,5 @@
-import models.swapping_autoencoder as sae
+import os
+from tqdm import trange
 from training.pipelines.ssl_pipelines import SAEDMRIRPipeline
 from training.logging.loggers import Logger
 from inference.pipelines.tadasae import SymmetryClassifierPipeline
@@ -6,11 +7,7 @@ from sklearn.preprocessing import RobustScaler
 from sklearn.svm import SVC
 from sklearn.neural_network import MLPClassifier
 from datasets.dmrir_dataset import DMRIRLeftRightDataset
-import os
-import albumentations as A
-from albumentations.pytorch import ToTensorV2
 from inference.metrics import classification_report
-from tqdm import trange
 from experiment import AbstractExperiment
 
 
@@ -20,7 +17,6 @@ class TADASAEExperiment(AbstractExperiment):
   
         self.training_pipeline = SAEDMRIRPipeline(self.main_parser)
         self.training_pipeline.init_pipeline("./configs/tadasae_dmrir.yaml")
-        self.config = self.training_pipeline.get_config()
 
         self.trainer = self.training_pipeline.prepare_trainer(Logger(self.config))
         if self.config['checkpoint'] is not None:
@@ -28,7 +24,8 @@ class TADASAEExperiment(AbstractExperiment):
         
         classifier = SVC(probability=True) if self.config['experiment'] == 'tadasae_svm' else MLPClassifier(hidden_layer_sizes=[])
         self.inference_pipeline = SymmetryClassifierPipeline(self.trainer.enc_ema, RobustScaler(), classifier, self.config['device'])
-        
+    
+
     def run(self):
         normal_loader, val_loader = self.training_pipeline.prepare_data()
         self.training_pipeline.run(self.trainer, normal_loader, val_loader)
@@ -42,8 +39,8 @@ class TADASAEExperiment(AbstractExperiment):
         test_normal_path = os.path.join(self.config['data_root'], self.config['normal_dir_test'])
         test_anomalous_path = os.path.join(self.config['data_root'], self.config['anomalous_dir_test'])
 
-        normal_ds = DMRIRLeftRightDataset(train_normal_path, self.preprocessing, return_mask=False, flip_align=True)
-        anomalous_ds = DMRIRLeftRightDataset(train_anomalous_path, self.preprocessing, return_mask=False, flip_align=True)
+        normal_ds = DMRIRLeftRightDataset(train_normal_path, self.preprocessing, return_mask=False)
+        anomalous_ds = DMRIRLeftRightDataset(train_anomalous_path, self.preprocessing, return_mask=False)
         # normal_ds_test = DMRIRLeftRightDataset(test_normal_path, self.preprocessing, return_mask=False, flip_align=True)
         # anomalous_ds_test= DMRIRLeftRightDataset(test_anomalous_path, self.preprocessing, return_mask=False, flip_align=True)
         
