@@ -23,15 +23,10 @@ class TADASAEAblationExperiments(AbstractExperiment):
     def __init__(self):
         super().__init__(['ae_full_im', 'ae_left_right', 'lsae_left_right', 'lsae_full_im'])
         experiment_name = vars(self.main_parser.parse_args())['experiment']
-        model_type = experiment_name.split('_')[0]
+        self.model_type = experiment_name.split('_')[0]
         self.mode = sum(experiment_name.split('_')[1:-1])
         
-        if model_type == ModelTypes.AE:
-            self.training_pipeline = AEDMRIRPipeline(self.main_parser)
-        else:
-            self.training_pipeline = SAEDMRIRPipeline(self.main_parser)
-            
-        self.trainer = self.training_pipeline.prepare_trainer()
+        self.trainer = None
         
         self.preprocessing = A.Compose(
                 [
@@ -43,8 +38,15 @@ class TADASAEAblationExperiments(AbstractExperiment):
             )
     
     def run(self):
-        train_loader, val_loader = self.training_pipeline.prepare_data(transforms=self.preprocessing, mode=self.mode)
-        self.training_pipeline.run(self.trainer, train_loader, val_loader)
+        if self.model_type == ModelTypes.AE:
+            TRAINING_PIPELINE = AEDMRIRPipeline
+        else:
+            TRAINING_PIPELINE = SAEDMRIRPipeline
+
+        training_pipeline = TRAINING_PIPELINE(self.main_parser)
+        train_loader, val_loader = training_pipeline.prepare_data(transforms=self.preprocessing, mode=self.mode)
+        self.trainer = self.training_pipeline.prepare_trainer()
+        training_pipeline.run(self.trainer, train_loader, val_loader)
         
     def test(self, seeds=1):       
         y_n_preds = []
@@ -66,13 +68,13 @@ class TADASAEAblationExperiments(AbstractExperiment):
         
         for i in trange(seeds, desc=f'Testing classification over {seeds} seeds'):
             np.random.seed(i)
-            self.inference_pipeline.fit_from_dataset(normal_ds_train, anomalous_ds_train)
+            inference_pipeline.fit_from_dataset(normal_ds_train, anomalous_ds_train)
             (y_normal_pred, _), (y_anomalous_pred, _) = (
-                self.inference_pipeline.evaluate_dataset(normal_ds_val, anomalous_ds_val)
+                inference_pipeline.evaluate_dataset(normal_ds_val, anomalous_ds_val)
             )
             y_n_preds.append(y_normal_pred[:,1]) 
             y_a_preds.append(y_anomalous_pred[:,1])
-            self.inference_pipeline.reset()
+            inference_pipeline.reset()
         classification_report(y_n_preds, y_a_preds)
 
 if __name__ == '__main__':
