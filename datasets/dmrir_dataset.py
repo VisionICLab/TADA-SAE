@@ -154,7 +154,7 @@ class DMRIRDataset(Dataset):
 
         return train_dataset, val_dataset
 
-
+# TODO: Simplify this class as its to similar to DMRIRDataset
 class DMRIRMatrixDataset(DMRIRDataset):
     """
     A DMRIRDataset subclass 
