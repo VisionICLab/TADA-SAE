@@ -1,9 +1,10 @@
 input_size: [1, 256, 256]
-mean: [0.1790]
-std: [0.2979]
+# mean: [0.1790]
+# std: [0.2979]
 # mean: [0.3597] #(full im)
 # std: [0.3075]
-
+mean: [0]
+std: [1]
 
 epochs: 20
 batch_size: 8
@@ -11,7 +12,7 @@ batch_size: 8
 optimizer: 
   name: Adam
   kwargs:
-    lr: 0.0003
+    lr: 0.001
 
 loss_fn:
   name: 'L1Loss'
@@ -33,13 +34,13 @@ anomalous_dir_test: test/anomalous
 
 # Run related
 num_workers: 0
-log_each: 1000
-log_dir: ./logs/sae_dmrir
-checkpoint_each: 100000
+log_each: 1
+log_dir: ./logs/ae_full_im
+checkpoint_each: 5
 seed: null
 checkpoint: null
 
-experiment: 'tadasae_svm'
+experiment: 'ae_full_im'
 test_only: False
 
 device: cuda

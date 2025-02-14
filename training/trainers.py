@@ -174,7 +174,8 @@ class ReconstructionTrainer(Trainer):
         random_recons = []
         for i in random_sampes_idx:
             random_sample = dataset[i].unsqueeze(0).to(self.config["device"])
-            recons = self.model(random_sample)[0]
+            z = self.encoder(random_sample)
+            recons = self.generator(z)
             random_recons.append(recons.detach().squeeze(0).cpu())
             random_samples.append(random_sample.detach().squeeze(0).cpu())
         random_recons = torch.stack(random_recons)
@@ -199,10 +200,10 @@ class ReconstructionTrainer(Trainer):
         for x in progress_bar:
             val_loss, outputs, gt = self.eval_step(x)
 
-            for metric in self.config["metrics"]["reconstruction"]:
-                self.logger.register_log(
-                    {metric: self.metrics["reconstruction"][metric](outputs, gt)}
-                )
+            # for metric in self.config["metrics"]["reconstruction"]:
+            #     self.logger.register_log(
+            #         {metric: self.metrics["reconstruction"][metric](outputs, gt)}
+            #     )
 
             self.logger.register_log({"eval_loss": val_loss})
             progress_bar.set_postfix({"Loss": val_loss})

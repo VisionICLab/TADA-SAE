@@ -84,7 +84,7 @@ class AEDMRIRPipeline(AbstractPipeline):
         train_ds = torch.utils.data.ConcatDataset([normal_train_ds, ano_train_ds])
         val_ds = torch.utils.data.ConcatDataset([ano_val_ds, ano_eval_ds])
 
-        train_loader = InfiniteDataLoader(
+        train_loader = torch.utils.data.DataLoader(
             train_ds,
             batch_size=self.config["batch_size"],
             shuffle=True,
@@ -101,13 +101,16 @@ class AEDMRIRPipeline(AbstractPipeline):
         return train_loader, val_loader
     
     def _prepare_training(self):
-        enc = ConvEncoder(1024, 8, 1).to(self.config['device'])  # TODO: CHange for custom dimensions from config file
-        dec = ConvDecoder(1024, 8, 1).to(self.config['device'])
+        from torch import nn
+        enc = ConvEncoder(512, 32, 1).to(self.config['device'])  # TODO: CHange for custom dimensions from config file
+        dec = ConvDecoder(512, 32, 1, output_act_fn=nn.Sigmoid()).to(self.config['device'])
         return enc, dec, *super()._prepare_training(list(enc.parameters())+list(dec.parameters()))
 
     def prepare_trainer(self):
-        enc, dec, optimizer, loss_fn, scheduler = self._prepare_training()
-        return ReconstructionTrainer(enc, dec, optimizer, loss_fn, self.config, Logger(self.config), scheduler)
+        enc, gen, optimizer, loss_fn, scheduler = self._prepare_training()
+        print(f"Encoder: {count_parameters(enc)}")
+        print(f"Generator: {count_parameters(gen)}")
+        return ReconstructionTrainer(enc, gen, optimizer, loss_fn, self.config, Logger(self.config), scheduler)
 
     def run(self, trainer, train_loader, val_loader):
         return trainer.fit(train_loader, val_loader)
