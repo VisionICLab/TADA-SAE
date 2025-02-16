@@ -1,10 +1,10 @@
 input_size: [1, 256, 256]
 # mean: [0.1790]
 # std: [0.2979]
-# mean: [0.3597] #(full im)
-# std: [0.3075]
-mean: [0]
-std: [1]
+mean: [0.3597] #(full im)
+std: [0.3075]
+# mean: [0]
+# std: [1]
 
 epochs: 20
 batch_size: 8

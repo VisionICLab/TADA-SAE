@@ -68,7 +68,7 @@ class AEDMRIRPipeline(AbstractPipeline):
         normal_path = os.path.join(self.config["data_root"], self.config["normal_dir_train"])
         ano_path = os.path.join(self.config["data_root"], self.config["anomalous_dir_train"])
 
-        side = 'both' if mode == TrainMode.FULL else 'any'
+        side = 'both' if mode == TrainMode.FULL.value else 'any'
         normal_ds = DMRIRMatrixDataset(normal_path, transforms, side, return_mask=False)
         ano_ds = DMRIRMatrixDataset(ano_path, transforms, side, return_mask=False)
 
@@ -101,9 +101,8 @@ class AEDMRIRPipeline(AbstractPipeline):
         return train_loader, val_loader
     
     def _prepare_training(self):
-        from torch import nn
         enc = ConvEncoder(512, 32, 1).to(self.config['device'])  # TODO: CHange for custom dimensions from config file
-        dec = ConvDecoder(512, 32, 1, output_act_fn=nn.Sigmoid()).to(self.config['device'])
+        dec = ConvDecoder(512, 32, 1).to(self.config['device'])
         return enc, dec, *super()._prepare_training(list(enc.parameters())+list(dec.parameters()))
 
     def prepare_trainer(self):

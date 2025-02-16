@@ -132,6 +132,7 @@ class AbstractPipeline(metaclass=ABCMeta):
             "--wandb", action="store_true", help="Whether to use wandb for logging"
         )
 
+
     def set_seed(self, seed=None):
         self.config["seed"] = seed
         if seed is not None:
