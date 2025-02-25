@@ -37,7 +37,7 @@ log_each: 1
 log_dir: ./logs/ae_full_im
 checkpoint_each: 5
 seed: null
-checkpoint: null
+checkpoint: logs/ae_full_im/checkpoints/simple_ae_adjustedmasks_20.pth
 
 experiment: 'ae_full_im'
 test_only: False

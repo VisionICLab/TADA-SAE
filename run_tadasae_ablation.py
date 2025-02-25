@@ -60,7 +60,9 @@ class TADASAEAblationExperiments(AbstractExperiment):
             PIPELINE_CLASS = SymmetryClassifierPipeline
             DS_CLASS = partial(DMRIRLeftRightDataset, transforms=self.preprocessing, return_mask=False)
         
-        inference_pipeline = PIPELINE_CLASS(self.trainer.encoder, RobustScaler(), SVC(probability=True))
+        
+            
+        inference_pipeline = PIPELINE_CLASS(self.trainer.encoder, RobustScaler(), SVC(probability=True), device=self.config['device'])
         
         normal_ds_train = DS_CLASS(root=os.path.join(self.config['data_root'], self.config['normal_dir_train']))
         anomalous_ds_train = DS_CLASS(root=os.path.join(self.config['data_root'], self.config['anomalous_dir_train']))
