@@ -90,7 +90,7 @@ class SymmetryClassifierPipeline(AnomalyDetectionPipeline):
     """
     A pipeline for training and evaluating a symmetry detection model using a supervised approach.
     """
-    def __init__(self, sae_texture_encoder, scaler, classifier, device=...):
+    def __init__(self, sae_texture_encoder, scaler, classifier, device='cpu'):
         super().__init__(sae_texture_encoder, scaler, classifier, device)
     
     def build_features(self, dataset):
@@ -105,12 +105,10 @@ class SymmetryClassifierPipeline(AnomalyDetectionPipeline):
         l_lats, r_lats = [], []
         for i in range(len(dataset)):
             l, r = dataset[i]
-            _, l_tex = self.encoder(l.unsqueeze(0).to(self.device), run_str=False, multi_tex=False)
-            _, r_tex = self.encoder(r.unsqueeze(0).to(self.device), run_str=False, multi_tex=False)
-            l_tex = l_tex.cpu().detach().numpy()
-            r_tex = r_tex.cpu().detach().numpy()
-            l_lats.append(l_tex)
-            r_lats.append(r_tex)
+            l_z = self.encoder(l.unsqueeze(0).to(self.device)).flatten(1).cpu().detach().numpy()
+            r_z = self.encoder(r.unsqueeze(0).to(self.device)).flatten(1).cpu().detach().numpy()
+            l_lats.append(l_z)
+            r_lats.append(r_z)
         return np.array(l_lats).squeeze(), np.array(r_lats).squeeze()
     
     def build_symmetry_features(self, dataset):
@@ -209,3 +207,25 @@ class SymmetryClassifierPipeline(AnomalyDetectionPipeline):
         X_normal = self.build_symmetry_features(normal_dataset)
         X_anomalous = self.build_symmetry_features(anomalous_dataset)
         return self.evaluate_features(X_normal, X_anomalous)
+
+class TextureSymmetryClassifierPipeline(SymmetryClassifierPipeline):
+    
+    def build_features(self, dataset):
+        """
+        Builds the left-right image features for the given dataset.
+        
+        Args:
+            dataset (torch.utils.data.Dataset): The dataset to build the features from.
+        Returns:
+            (np.ndarray, np.ndarray): The left and right image features.
+        """
+        l_lats, r_lats = [], []
+        for i in range(len(dataset)):
+            l, r = dataset[i]
+            _, l_tex = self.encoder(l.unsqueeze(0).to(self.device), run_str=False, multi_tex=False)
+            _, r_tex = self.encoder(r.unsqueeze(0).to(self.device), run_str=False, multi_tex=False)
+            l_tex = l_tex.cpu().detach().numpy()
+            r_tex = r_tex.cpu().detach().numpy()
+            l_lats.append(l_tex)
+            r_lats.append(r_tex)
+        return np.array(l_lats).squeeze(), np.array(r_lats).squeeze()

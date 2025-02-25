@@ -3,7 +3,7 @@ from tqdm import trange
 from experiment import AbstractExperiment
 from training.pipelines.ssl_pipelines import AEDMRIRPipeline, TADASAEDMRIRPipeline
 from enum import Enum
-from inference.pipelines.tadasae import SymmetryClassifierPipeline, AnomalyDetectionPipeline
+from inference.pipelines.tadasae import TextureSymmetryClassifierPipeline, SymmetryClassifierPipeline, AnomalyDetectionPipeline
 from sklearn.preprocessing import RobustScaler
 from sklearn.svm import SVC
 from training.pipelines.pipeline import TrainMode
@@ -23,10 +23,10 @@ class TADASAEAblationExperiments(AbstractExperiment):
     def __init__(self):
         super().__init__(['ae_full_im', 'ae_left_right', 'lsae_left_right', 'lsae_full_im'])
         experiment_name = vars(self.main_parser.parse_args())['experiment']
-        model_type = experiment_name.split('_')[0]
+        self.model_type = experiment_name.split('_')[0]
         self.mode = '_'.join(experiment_name.split('_')[1:])
         
-        if model_type == ModelTypes.AE.value:
+        if self.model_type == ModelTypes.AE.value:
             self.training_pipeline = AEDMRIRPipeline(self.main_parser)
             self.training_pipeline.init_pipeline('configs/ae_dmrir.yaml')
         else:
@@ -57,11 +57,12 @@ class TADASAEAblationExperiments(AbstractExperiment):
             PIPELINE_CLASS = AnomalyDetectionPipeline
             DS_CLASS = partial(DMRIRMatrixDataset, transforms=self.preprocessing, side='both', return_mask=False)
         else:
-            PIPELINE_CLASS = SymmetryClassifierPipeline
             DS_CLASS = partial(DMRIRLeftRightDataset, transforms=self.preprocessing, return_mask=False)
-        
-        
-            
+            if self.model_type == ModelTypes.LSAE.value:
+                PIPELINE_CLASS = TextureSymmetryClassifierPipeline
+            else:
+                PIPELINE_CLASS = SymmetryClassifierPipeline
+
         inference_pipeline = PIPELINE_CLASS(self.trainer.encoder, RobustScaler(), SVC(probability=True), device=self.config['device'])
         
         normal_ds_train = DS_CLASS(root=os.path.join(self.config['data_root'], self.config['normal_dir_train']))
