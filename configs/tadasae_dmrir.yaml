@@ -16,7 +16,7 @@ max_patch_size: 0.25
 grad_clip: 1.0
 
 # Dataset
-data_root: ./data/dmrir/
+data_root: ./data/dmrir_tadasae_adjustedmasks/
 normal_dir_train: train/normal
 anomalous_dir_train: train/anomalous
 normal_dir_test: test/normal
@@ -33,7 +33,7 @@ log_each: 1000
 log_dir: ./logs/sae_dmrir
 checkpoint_each: 100000
 seed: null
-checkpoint: null
+checkpoint: null # Trained model path, i.e logs/sae_dmrir/checkpoints/sae_c16_s4_t1024_adjustedmasks_400000.pth
 
 experiment: 'tadasae_svm'
 test_only: False
@@ -44,4 +44,4 @@ entity: ben_schmark
 project_name: thermanomaly
 project_group: sae_dmrir
 model_name: sae_dmrir_temperature_transfer
-run_name: sae_c16_s4_t1024_test_tadasae
+run_name: sae_c16_s4_t1024_adjustedmasks

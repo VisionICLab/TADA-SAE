@@ -1,4 +1,3 @@
-from argparse import ArgumentParser
 import os
 import torch
 from torch.nn import DataParallel
@@ -53,8 +52,9 @@ class AEDMRIRPipeline(AbstractPipeline):
 
         if "seed" in self.config:
             self.set_seed(self.config["seed"])
-            
-    def prepare_data(self, transforms=..., mode=TrainMode.FULL):
+
+
+    def _prepare_dataset(self, transforms=None, mode=TrainMode.FULL, return_mask=False):
         if transforms is None:
             transforms = A.Compose(
                 [
@@ -69,8 +69,8 @@ class AEDMRIRPipeline(AbstractPipeline):
         ano_path = os.path.join(self.config["data_root"], self.config["anomalous_dir_train"])
 
         side = 'both' if mode == TrainMode.FULL.value else 'any'
-        normal_ds = DMRIRMatrixDataset(normal_path, transforms, side, return_mask=False)
-        ano_ds = DMRIRMatrixDataset(ano_path, transforms, side, return_mask=False)
+        normal_ds = DMRIRMatrixDataset(normal_path, transforms, side, return_mask=return_mask)
+        ano_ds = DMRIRMatrixDataset(ano_path, transforms, side, return_mask=return_mask)
 
         normal_train_ds, ano_val_ds = random_split(
             normal_ds,
@@ -83,6 +83,11 @@ class AEDMRIRPipeline(AbstractPipeline):
 
         train_ds = torch.utils.data.ConcatDataset([normal_train_ds, ano_train_ds])
         val_ds = torch.utils.data.ConcatDataset([ano_val_ds, ano_eval_ds])
+        
+        return train_ds, val_ds
+
+    def prepare_data(self, transforms=None, mode=TrainMode.FULL, return_mask=False):
+        train_ds, val_ds = self._prepare_dataset(transforms, mode, return_mask)
 
         train_loader = torch.utils.data.DataLoader(
             train_ds,
@@ -114,15 +119,33 @@ class AEDMRIRPipeline(AbstractPipeline):
     def run(self, trainer, train_loader, val_loader):
         return trainer.fit(train_loader, val_loader)
 
-class SAEDMRIRPipeline(AEDMRIRPipeline):
+
+class TADASAEDMRIRPipeline(AEDMRIRPipeline):
     """
     A pipeline for training on DMRIR dataset with Swapping Autoencoder
     """
     def __init__(self, main_parser=...):
         super().__init__(main_parser)
         
-    # def prepare_data(self, transforms=None, **kwargs):
-    #     return super().prepare_data(transforms, TrainMode.LR)
+    def prepare_data(self, transforms=None):
+        train_ds, val_ds = self._prepare_dataset(transforms, TrainMode.LR, return_mask=True)
+        
+        train_loader = InfiniteDataLoader(
+            train_ds,
+            batch_size=self.config["batch_size"],
+            shuffle=True,
+            drop_last=True,
+            num_workers=self.config["num_workers"],
+        )
+        
+        val_loader = torch.utils.data.DataLoader(
+            val_ds,
+            batch_size=self.config["batch_size"],
+            shuffle=True,
+            drop_last=True,
+            num_workers=self.config["num_workers"],
+        )
+        return train_loader, val_loader
 
     def _prepare_training(self):
         CHANNELS = self.config["channels"]

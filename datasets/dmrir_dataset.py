@@ -195,7 +195,7 @@ class DMRIRMatrixDataset(DMRIRDataset):
                             "right_mask": [],
                         }
 
-                    if name.endswith("Matrizes"):
+                    if name.endswith("matrices"):
                         self.files[p_num]["matrix"].append(os.path.join(name, f))
 
                     if name.endswith("masks"):

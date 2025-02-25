@@ -1,12 +1,15 @@
 import torch
-from tqdm import tqdm, trange
+from tqdm import tqdm
 from abc import ABCMeta, abstractmethod
 import numpy as np
 import os
-from inference import metrics
-from training.logging.visualisations import visualize_reconstructions
 from training.logging.loggers import Logger
 import torchmetrics
+import matplotlib.pyplot as plt
+from matplotlib import cm
+from torchvision.utils import make_grid
+from training.logging.utils import denormalize_image
+
 
 
 class Trainer(metaclass=ABCMeta):
@@ -144,12 +147,7 @@ class ReconstructionTrainer(Trainer):
     def __init__(self, encoder, generator, optimizer, loss_fn, config, logger, scheduler=None):
         super().__init__(encoder, optimizer, loss_fn, config, logger, scheduler)
         self.generator = generator
-        # self.metrics = {"reconstruction": {}}
-        # for metric in config["metrics"]["reconstruction"]:
-        #     self.metrics["reconstruction"][metric] = getattr(
-        #         reconstruction, metric
-        #     )().to(config["device"])
-    
+
     def train_step(self, x):
         x = x.to(self.config["device"])
         self.optimizer.zero_grad()
@@ -166,7 +164,6 @@ class ReconstructionTrainer(Trainer):
         y = self.generator(z)
         eval_loss = self.loss_fn(y, x)
         return eval_loss.item(), y, x
-    
 
     def _make_visualizations(self, dataset, size=5, title="Reconstructions"):
         random_sampes_idx = np.random.randint(len(dataset), size=size)
@@ -178,12 +175,29 @@ class ReconstructionTrainer(Trainer):
             recons = self.generator(z)
             random_recons.append(recons.detach().squeeze(0).cpu())
             random_samples.append(random_sample.detach().squeeze(0).cpu())
-        random_recons = torch.stack(random_recons)
-        random_samples = torch.stack(random_samples)
-        _, fig = visualize_reconstructions(
-            random_samples, random_recons, title=title, with_delta=True
+            
+        originals = denormalize_image(torch.stack(random_recons), self.config['mean'], self.config['std'])
+        reconstructions = denormalize_image(torch.stack(random_samples), self.config['mean'], self.config['std'])
+        
+        if originals.shape[1] == 1:
+            originals = originals.repeat(1,3,1,1)
+            reconstructions = reconstructions.repeat(1,3,1,1)
+        
+        deltas = torch.abs(originals - reconstructions).mean(axis=1)
+
+        deltas = torch.from_numpy(
+            np.apply_along_axis(cm.inferno, 0, deltas.numpy())[:, :3, :, :]
         )
-        return fig
+        imgs = torch.cat((reconstructions, deltas, originals))
+        grid = make_grid(imgs, nrow=len(originals), padding=2, pad_value=1).permute(1,2,0)
+
+        fig, ax = plt.subplots(num=1, clear=True)
+        fig.tight_layout()
+        ax.set_axis_off()
+        ax.set_title(title)
+
+        ax.imshow(grid, vmin=0, vmax=1)
+        return ax.figure
 
     @torch.no_grad()
     def evaluate(self, val_loader, with_visualizations=True):
@@ -198,13 +212,7 @@ class ReconstructionTrainer(Trainer):
         progress_bar = tqdm(val_loader, desc="Evaluating reconstruction", colour="cyan")
 
         for x in progress_bar:
-            val_loss, outputs, gt = self.eval_step(x)
-
-            # for metric in self.config["metrics"]["reconstruction"]:
-            #     self.logger.register_log(
-            #         {metric: self.metrics["reconstruction"][metric](outputs, gt)}
-            #     )
-
+            val_loss, _, _ = self.eval_step(x)
             self.logger.register_log({"eval_loss": val_loss})
             progress_bar.set_postfix({"Loss": val_loss})
 
@@ -279,4 +287,3 @@ class SupervisedTrainer(Trainer):
             self.update_scheduler()
             self._make_checkpoint(self.current_epoch)
             self.logger.log(self.current_epoch)       
-    

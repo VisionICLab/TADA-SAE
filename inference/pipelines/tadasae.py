@@ -33,11 +33,11 @@ def generate_interpolation(sae_encoder, sae_generator, struct_im, text_im, alpha
 
 
 class AnomalyDetectionPipeline:
-    def __init__(self, encoder, scaler, classifier):
-        self.device = encoder.device
+    def __init__(self, encoder, scaler, classifier, device='cpu'):
         self.encoder = encoder.eval()
         self.scaler = scaler
         self.classifier = classifier
+        self.device = device
 
     def reset(self):
         """
@@ -90,9 +90,8 @@ class SymmetryClassifierPipeline(AnomalyDetectionPipeline):
     """
     A pipeline for training and evaluating a symmetry detection model using a supervised approach.
     """
-    def __init__(self, sae_texture_encoder, scaler, classifier):
-        super().__init__(sae_texture_encoder, scaler, classifier)
-        self.device = sae_texture_encoder.device
+    def __init__(self, sae_texture_encoder, scaler, classifier, device=...):
+        super().__init__(sae_texture_encoder, scaler, classifier, device)
     
     def build_features(self, dataset):
         """
@@ -106,8 +105,8 @@ class SymmetryClassifierPipeline(AnomalyDetectionPipeline):
         l_lats, r_lats = [], []
         for i in range(len(dataset)):
             l, r = dataset[i]
-            _, l_tex = self.sae_texture_encoder(l.unsqueeze(0).to(self.device), run_str=False, multi_tex=False)
-            _, r_tex = self.sae_texture_encoder(r.unsqueeze(0).to(self.device), run_str=False, multi_tex=False)
+            _, l_tex = self.encoder(l.unsqueeze(0).to(self.device), run_str=False, multi_tex=False)
+            _, r_tex = self.encoder(r.unsqueeze(0).to(self.device), run_str=False, multi_tex=False)
             l_tex = l_tex.cpu().detach().numpy()
             r_tex = r_tex.cpu().detach().numpy()
             l_lats.append(l_tex)

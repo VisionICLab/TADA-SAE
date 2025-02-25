@@ -1,7 +1,7 @@
 import os
 from tqdm import trange
 from experiment import AbstractExperiment
-from training.pipelines.ssl_pipelines import AEDMRIRPipeline, SAEDMRIRPipeline
+from training.pipelines.ssl_pipelines import AEDMRIRPipeline, TADASAEDMRIRPipeline
 from enum import Enum
 from inference.pipelines.tadasae import SymmetryClassifierPipeline, AnomalyDetectionPipeline
 from sklearn.preprocessing import RobustScaler
@@ -30,7 +30,7 @@ class TADASAEAblationExperiments(AbstractExperiment):
             self.training_pipeline = AEDMRIRPipeline(self.main_parser)
             self.training_pipeline.init_pipeline('configs/ae_dmrir.yaml')
         else:
-            self.training_pipeline = SAEDMRIRPipeline(self.main_parser)
+            self.training_pipeline = TADASAEDMRIRPipeline(self.main_parser)
             self.training_pipeline.init_pipeline('configs/tadasae_dmrir.yaml')
 
         self.config = self.training_pipeline.config

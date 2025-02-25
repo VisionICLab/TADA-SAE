@@ -1,8 +1,8 @@
 input_size: [1, 256, 256]
-# mean: [0.1790]
-# std: [0.2979]
-mean: [0.3597] #(full im)
-std: [0.3075]
+mean: [0.1790]
+std: [0.2979]
+# mean: [0.3597] #(full im)
+# std: [0.3075]
 # mean: [0]
 # std: [1]
 
@@ -21,12 +21,11 @@ loss_fn:
 
 
 # Dataset
-data_root: ./data/dmrir/
+data_root: ./data/dmrir_tadasae_adjustedmasks/
 normal_dir_train: train/normal
 anomalous_dir_train: train/anomalous
 normal_dir_test: test/normal
 anomalous_dir_test: test/anomalous
-
 # scheduler:
 #   name: ExponentialLR
 #   kwargs:
@@ -48,5 +47,5 @@ wandb: False
 entity: ben_schmark
 project_name: thermanomaly
 project_group: ae_dmrir
-model_name: simple_ae
-run_name: ae_test
+model_name: simple_ae_adjustedmasks
+run_name: simple_ae_adjustedmasks
