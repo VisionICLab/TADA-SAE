@@ -2,10 +2,10 @@ import os
 from tqdm import trange
 from experiment import AbstractExperiment
 from training.pipelines.ssl_pipelines import AEDMRIRPipeline, TADASAEDMRIRPipeline
-from enum import Enum
 from inference.pipelines.tadasae import TextureSymmetryClassifierPipeline, SymmetryClassifierPipeline, AnomalyDetectionPipeline
 from sklearn.preprocessing import RobustScaler
 from sklearn.svm import SVC
+from experiment import ModelTypes
 from training.pipelines.pipeline import TrainMode
 from datasets.dmrir_dataset import DMRIRMatrixDataset, DMRIRLeftRightDataset
 import albumentations as A
@@ -15,16 +15,11 @@ from inference.metrics import classification_report
 import numpy as np
 
 
-class ModelTypes(Enum):
-    LSAE='lsae'
-    AE='ae'
-
 class TADASAEAblationExperiments(AbstractExperiment):
     def __init__(self):
-        super().__init__(['ae_full_im', 'ae_left_right', 'lsae_left_right', 'lsae_full_im'])
-        experiment_name = vars(self.main_parser.parse_args())['experiment']
-        self.model_type = experiment_name.split('_')[0]
-        self.mode = '_'.join(experiment_name.split('_')[1:])
+        super().__init__(['ae_full_im', 'ae_left_right', 'lsae_full_im'])
+        self.model_type = self.experiment.split('_')[0]
+        self.mode = '_'.join(self.experiment.split('')[1:])
         
         if self.model_type == ModelTypes.AE.value:
             self.training_pipeline = AEDMRIRPipeline(self.main_parser)
@@ -63,6 +58,7 @@ class TADASAEAblationExperiments(AbstractExperiment):
             else:
                 PIPELINE_CLASS = SymmetryClassifierPipeline
 
+        
         inference_pipeline = PIPELINE_CLASS(self.trainer.encoder, RobustScaler(), SVC(probability=True), device=self.config['device'])
         
         normal_ds_train = DS_CLASS(root=os.path.join(self.config['data_root'], self.config['normal_dir_train']))

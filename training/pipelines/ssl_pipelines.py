@@ -127,8 +127,8 @@ class TADASAEDMRIRPipeline(AEDMRIRPipeline):
     def __init__(self, main_parser=...):
         super().__init__(main_parser)
         
-    def prepare_data(self, transforms=None):
-        train_ds, val_ds = self._prepare_dataset(transforms, TrainMode.LR, return_mask=True)
+    def prepare_data(self, mode=TrainMode.LR, transforms=None):
+        train_ds, val_ds = self._prepare_dataset(transforms, mode, return_mask=True)
         
         train_loader = InfiniteDataLoader(
             train_ds,

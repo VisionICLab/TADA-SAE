@@ -1,10 +1,9 @@
 input_size: [1, 256, 256]
-mean: [0.1790]
-std: [0.2979]
-# mean: [0.3597] #(full im)
-# std: [0.3075]
-# mean: [0]
-# std: [1]
+# mean: [0.1790]
+# std: [0.2979]
+mean: [0.3597] #(full im)
+std: [0.3075]
+
 
 epochs: 20
 batch_size: 8
@@ -21,7 +20,7 @@ loss_fn:
 
 
 # Dataset
-data_root: ./data/dmrir_tadasae_adjustedmasks/
+data_root: ./data/dmrir_tadasae/
 normal_dir_train: train/normal
 anomalous_dir_train: train/anomalous
 normal_dir_test: test/normal
@@ -48,4 +47,4 @@ entity: ben_schmark
 project_name: thermanomaly
 project_group: ae_dmrir
 model_name: simple_ae_adjustedmasks
-run_name: simple_ae_adjustedmasks
+run_name: simple_ae_adjustedmasks_fullim

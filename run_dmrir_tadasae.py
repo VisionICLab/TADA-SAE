@@ -14,8 +14,8 @@ from albumentations.pytorch import ToTensorV2
 
 class TADASAEExperiment(AbstractExperiment):
     def __init__(self):
-        super().__init__(['tadasae_svm', 'tadasae_linear'])
-  
+        super().__init__(['tadasae'])
+    
         self.training_pipeline = TADASAEDMRIRPipeline(self.main_parser)
         self.training_pipeline.init_pipeline("./configs/tadasae_dmrir.yaml")
 
@@ -32,7 +32,7 @@ class TADASAEExperiment(AbstractExperiment):
                 additional_targets={"image0": "image", "mask0": "mask"},
             )
 
-        classifier = SVC(probability=True) if self.config['experiment'] == 'tadasae_svm' else MLPClassifier(hidden_layer_sizes=[])
+        classifier = SVC(probability=True) if self.config['classifier'] == 'svm' else MLPClassifier(hidden_layer_sizes=[])
         self.inference_pipeline = SymmetryClassifierPipeline(self.trainer.enc_ema, RobustScaler(), classifier, self.config['device'])
 
     @property
