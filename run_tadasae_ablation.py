@@ -7,7 +7,7 @@ from sklearn.preprocessing import RobustScaler
 from sklearn.svm import SVC
 from experiment import ModelTypes
 from training.pipelines.pipeline import TrainMode
-from datasets.dmrir_dataset import DMRIRMatrixDataset, DMRIRLeftRightDataset
+from datasets.dmrir_dataset import DMRIRDataset, DMRIRLeftRightDataset
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 from functools import partial
@@ -50,7 +50,7 @@ class TADASAEAblationExperiments(AbstractExperiment):
         
         if self.mode == TrainMode.FULL:
             PIPELINE_CLASS = AnomalyDetectionPipeline
-            DS_CLASS = partial(DMRIRMatrixDataset, transforms=self.preprocessing, side='both', return_mask=False)
+            DS_CLASS = partial(DMRIRDataset, transforms=self.preprocessing, side='both', return_mask=False)
         else:
             DS_CLASS = partial(DMRIRLeftRightDataset, transforms=self.preprocessing, return_mask=False)
             if self.model_type == ModelTypes.LSAE.value:

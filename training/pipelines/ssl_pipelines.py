@@ -3,7 +3,7 @@ import torch
 from torch.nn import DataParallel
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
-from datasets.dmrir_dataset import DMRIRMatrixDataset
+from datasets.dmrir_dataset import DMRIRDataset
 from datasets.utils import InfiniteDataLoader
 import numpy as np
 from torch.utils.data import random_split
@@ -69,8 +69,8 @@ class AEDMRIRPipeline(AbstractPipeline):
         ano_path = os.path.join(self.config["data_root"], self.config["anomalous_dir_train"])
 
         side = 'both' if mode == TrainMode.FULL.value else 'any'
-        normal_ds = DMRIRMatrixDataset(normal_path, transforms, side, return_mask=return_mask)
-        ano_ds = DMRIRMatrixDataset(ano_path, transforms, side, return_mask=return_mask)
+        normal_ds = DMRIRDataset(normal_path, transforms, side, return_mask=return_mask)
+        ano_ds = DMRIRDataset(ano_path, transforms, side, return_mask=return_mask)
 
         normal_train_ds, ano_val_ds = random_split(
             normal_ds,
