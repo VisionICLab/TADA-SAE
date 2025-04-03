@@ -41,13 +41,10 @@ class AbstractExperiment(metaclass=ABCMeta):
         )
         
         self.main_parser.add_argument(
-            '--test_only', 
+            '--test-only', 
             action="store_true",
             help="Run the breats cancer classification only, requires a trained encoder (specified in --checkpoint argument)"
         )
-        
-        self.experiment = vars(self.main_parser.parse_args())['experiment']
-
         
     
     @abstractmethod

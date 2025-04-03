@@ -2,7 +2,8 @@ import random
 import copy
 import cv2
 import torch
-
+from torch.utils.data import Dataset, DataLoader, SubsetRandomSampler
+from sklearn.model_selection import KFold, GroupKFold
 
 def split(dataset, ratio=0.8, shuffle=True):
     """
@@ -64,3 +65,18 @@ def denormalize_image(im, mean, std):
         + torch.tensor(mean, device=im.device)[:, None, None]
     )
     return denorm.clamp(0, 1).float()
+
+
+class KFoldDatasetWrapper(Dataset):
+    def __init__(self, dataset, n_splits=10):
+        self.dataset=dataset
+        self.n_splits=n_splits
+        kf = KFold(self.n_splits)
+    
+    def __getitem__(self, index):
+        return super().__getitem__(index)
+    
+    def __len__(self):
+        return len(self.dataset)
+        
+        

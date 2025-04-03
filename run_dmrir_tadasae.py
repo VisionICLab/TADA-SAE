@@ -1,7 +1,7 @@
 import os
 from tqdm import trange
 from training.pipelines.ssl_pipelines import TADASAEDMRIRPipeline
-from inference.pipelines.tadasae import SymmetryClassifierPipeline
+from inference.pipelines.tadasae import TextureSymmetryClassifierPipeline
 from sklearn.preprocessing import RobustScaler
 from sklearn.svm import SVC
 from sklearn.neural_network import MLPClassifier
@@ -33,7 +33,7 @@ class TADASAEExperiment(AbstractExperiment):
             )
 
         classifier = SVC(probability=True) if self.config['classifier'] == 'svm' else MLPClassifier(hidden_layer_sizes=[])
-        self.inference_pipeline = SymmetryClassifierPipeline(self.trainer.enc_ema, RobustScaler(), classifier, self.config['device'])
+        self.inference_pipeline = TextureSymmetryClassifierPipeline(self.trainer.enc_ema, RobustScaler(), classifier, self.config['device'])
 
     @property
     def config(self):
@@ -72,4 +72,4 @@ if __name__ == '__main__':
     experiment = TADASAEExperiment()
     if not experiment.config['test_only']:
         experiment.run()
-    experiment.test(1)
+    experiment.test(2)
