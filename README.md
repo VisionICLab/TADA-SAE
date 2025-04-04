@@ -31,7 +31,7 @@ The file ```run_tadasae_ablation.py``` contains the code to reproduce the ablati
 **Example**: ```python run_dmrir_ablation.py --experiment ae_full_im```
 
 ### TADA-SAE
-The file ```run_dmrir_tadasae.py``` contains the code to reproduce the TADA-SAE method. The parameters can be adjusted in the command line or in the ```configs/tadasae_dmrir.yaml``` file. The TADA-SAE method is a combination of the three components: texture disentanglement, left-right symmetry and classification. It is based on the LSAE (Zhou et al., 2022) autoencoder, which is used to extract image features from the left and right images, followed by a classification. For this model, weights are provided in the weights folder.
+The file ```run_dmrir_tadasae.py``` contains the code to reproduce the TADA-SAE method. The parameters can be adjusted in the command line or in the ```configs/tadasae_dmrir.yaml``` file. The TADA-SAE method is a combination of the three components: texture disentanglement, left-right symmetry and classification. It is based on the LSAE (Zhou et al., 2022) autoencoder, which is used to extract image features from the left and right images, followed by a classification. For this model, weights are provided in the ```weights``` folder.
 
 **Examples**: 
 
