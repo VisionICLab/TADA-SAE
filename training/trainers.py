@@ -166,10 +166,10 @@ class ReconstructionTrainer(Trainer):
         return eval_loss.item(), y, x
 
     def _make_visualizations(self, dataset, size=5, title="Reconstructions"):
-        random_sampes_idx = np.random.randint(len(dataset), size=size)
+        random_samples_idx = np.random.randint(len(dataset), size=size)
         random_samples = []
         random_recons = []
-        for i in random_sampes_idx:
+        for i in random_samples_idx:
             random_sample = dataset[i].unsqueeze(0).to(self.config["device"])
             z = self.encoder(random_sample)
             recons = self.generator(z)
