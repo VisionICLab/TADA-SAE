@@ -106,7 +106,7 @@ class AEDMRIRPipeline(AbstractPipeline):
         return train_loader, val_loader
     
     def _prepare_training(self):
-        enc = ConvEncoder(512, 32, 1).to(self.config['device'])  # TODO: CHange for custom dimensions from config file
+        enc = ConvEncoder(512, 32, 1).to(self.config['device'])  # TODO: Change for custom dimensions from config file
         dec = ConvDecoder(512, 32, 1).to(self.config['device'])
         return enc, dec, *super()._prepare_training(list(enc.parameters())+list(dec.parameters()))
 
