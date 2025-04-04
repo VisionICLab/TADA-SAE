@@ -7,165 +7,24 @@ from copy import deepcopy
 
 class DMRIRDataset(Dataset):
     """
-    Args:
-
-        path (string): the root path to DMRIR images and masks
-        transforms (albumentations.BasicTransform): Transformations for image preprocessing
-        mode (string): Structure of returned data, one of (paired, single, patient, matrix)
-                       paired: (l_im, r_im, p_id); single: (img); patient: (img, patient_id);
-                       matrix: (img) as raw temperature values as collected by the thermal camera (in .txt files)
-    """
-
-
-    def __init__(self, path, transforms=None, mode="single"):
-        assert mode in [
-            "paired",
-            "single",
-            "patient",
-            "matrix",
-        ], "mode must be one of ['paired', 'single', 'patient', 'matrix']"
-        self.mode = mode
-        self._ext = ".txt" if self.mode == "matrix" else ".png"
-
-        self.files = self.list_files(path)
-        self.transforms = transforms
-        self.path = path
-        if self.mode == "single" or self.mode == "matrix":
-            self.proc_files = [f for p in self.files for f in self.files[p]]
-        elif self.mode == "paired":
-            self.proc_files = self._get_left_right_files()
-
-    def __len__(self):
-        return len([f for p in self.files for f in self.files[p]])
-
-    def list_files(self, path):
-        patient_file = {}
-        for name, _, files in os.walk(path):
-            for f in files:
-                if self._ext in f:
-                    p_num = f.split("PAC_")[1].split("_")[0]
-                    if p_num not in patient_file:
-                        patient_file[p_num] = []
-                    patient_file[p_num].append(os.path.join(name, f))
-        return patient_file
-
-    def read_tmp_matrix(self, f):
-        im = np.loadtxt(f)
-        im = (im - np.min(im)) / (np.max(im) - np.min(im))
-        im = np.array(im * 255, dtype=np.uint8)
-        return im
-
-    def _get_left_right_files(self):
-        l_r_files = {}
-        for p_id in self.files.keys():
-            all_files = self.files[p_id]
-            d_nums = {}
-            for f in all_files:
-                acquisition_num = f.split("PAC_")[1].split("_")[1].split("-")[0]
-                side = f.split("PAC_")[1].split("-")[-1].split(".")[0]
-                if acquisition_num not in d_nums:
-                    d_nums[acquisition_num] = {"left": None, "right": None}
-                if side == "dir":
-                    d_nums[acquisition_num]["right"] = f
-                else:
-                    d_nums[acquisition_num]["left"] = f
-
-            d_nums = [
-                (v["left"], v["right"])
-                for v in d_nums.values()
-                if v["left"] is not None and v["right"] is not None
-            ]
-            if len(d_nums) > 0:
-                l_r_files[p_id] = d_nums
-        return l_r_files
-
-    def _getitem_per_patient(self, idx):
-        for p_id in self.files:
-            if idx < len(self.files[p_id]):
-                f = self.files[p_id][idx]
-                img = cv2.imread(f, cv2.IMREAD_GRAYSCALE)
-                if self.transforms is not None:
-                    augmented = self.transforms(image=img)
-                    img = augmented["image"]
-                return img, p_id
-            else:
-                idx -= len(self.files[p_id])
-
-    def _getitem_paired(self, idx):
-        for p_id in self.proc_files:
-            if idx < len(self.proc_files[p_id]):
-                l_f, r_f = self.proc_files[p_id][idx]
-                l_img = cv2.imread(l_f, cv2.IMREAD_GRAYSCALE)
-                r_img = cv2.imread(r_f, cv2.IMREAD_GRAYSCALE)
-                if self.transforms is not None:
-                    augmented = self.transforms(image=l_img, image0=r_img)
-                    l_img = augmented["image"]
-                    r_img = augmented["image0"]
-                return l_img, r_img, p_id
-            else:
-                idx -= len(self.proc_files[p_id])
-
-    def _getitem_single_mask(self, idx):
-        f = self.proc_files[idx]
-        img = (
-            self.read_tmp_matrix(f)
-            if self.mode == "matrix"
-            else cv2.imread(f, cv2.IMREAD_GRAYSCALE)
-        )
-        mask = ((img > 0) * 255).astype(np.uint8)
-        if self.transforms is not None:
-            augmented = self.transforms(image=img, mask=mask)
-            img = augmented["image"]
-            mask = augmented["mask"]
-            mask = mask.squeeze(0) > 0
-        return img, mask
-
-    def __getitem__(self, idx):
-        if self.mode == "single" or self.mode == "matrix":
-            return self._getitem_single_mask(idx)
-        elif self.mode == "paired":
-            return self._getitem_paired(idx)
-        elif self.mode == "patient":
-            return self._getitem_per_patient(idx)
-
-    def split(self, train_ratio=0.8):
-        """
-        Randomly split the dataset into training and validation sets by patient.
-        """
-        # select random patients
-        patients = list(self.files.keys())
-        np.random.shuffle(patients)
-        n_train = int(train_ratio * len(patients))
-        train_patients = patients[:n_train]
-        val_patients = patients[n_train:]
-
-        train_files = {}
-        val_files = {}
-        for p in train_patients:
-            train_files[p] = self.files[p]
-        for p in val_patients:
-            val_files[p] = self.files[p]
-
-        train_dataset = deepcopy(self)
-        train_dataset.files = train_files
-
-        val_dataset = deepcopy(self)
-        val_dataset.files = val_files
-
-        return train_dataset, val_dataset
-
-
-class DMRIRMatrixDataset(DMRIRDataset):
-    """
-    A DMRIRDataset subclass 
+    A dataset class which is used to load
+    samples from DMRIR dataset given formatting instructions
+    passed as parameters.
     
+    Args:
+        root (str): The root directory of the dataset
+        transforms (albumentations.Compose): A composition of albumentations transforms
+        side (str): The side of the breast to load. One of ['left', 'right', 'any', 'both']
+        return_mask (bool): Whether to return the mask along with the image
+        apply_mask (bool): Whether to apply the mask to the image. If False, the side attribute has no effect.
+        flip_align (bool): Whether to flip the image and mask horizontally, which ensures all breast images face the same direction
     """
 
     def __init__(
         self,
         root,
         transforms=None,
-        side="left",
+        side="both",
         return_mask=True,
         apply_mask=True,
         flip_align=True,
@@ -195,7 +54,7 @@ class DMRIRMatrixDataset(DMRIRDataset):
                             "right_mask": [],
                         }
 
-                    if name.endswith("Matrizes"):
+                    if name.endswith("matrices"):
                         self.files[p_num]["matrix"].append(os.path.join(name, f))
 
                     if name.endswith("masks"):
@@ -220,6 +79,12 @@ class DMRIRMatrixDataset(DMRIRDataset):
         self.side = side
 
     def read_tmp_matrix(self, f):
+        """
+        Read a matrix file and normalize it to [0, 255]
+        
+        Args:
+            f (str): The path to the matrix file
+        """
         im = np.loadtxt(f)
         im = (im - np.min(im)) / (np.max(im) - np.min(im))
         im = np.array(im * 255, dtype=np.uint8)
@@ -276,8 +141,42 @@ class DMRIRMatrixDataset(DMRIRDataset):
                 return img
             else:
                 idx -= len(self.files[p_id]["matrix"]) * mul
+                
+    def split(self, train_ratio=0.8):
+        """
+        Randomly split the dataset into training and validation sets by patient.
+        
+        Args:
+            train_ratio (float): The ratio of the dataset to use for training
+            
+        Returns:
+            DMRIRDataset: A training dataset
+            DMRIRDataset: A validation dataset
+        """
+        # select random patients
+        patients = list(self.files.keys())
+        np.random.shuffle(patients)
+        n_train = int(train_ratio * len(patients))
+        train_patients = patients[:n_train]
+        val_patients = patients[n_train:]
 
-class DMRIRLeftRightDataset(DMRIRMatrixDataset):
+        train_files = {}
+        val_files = {}
+        for p in train_patients:
+            train_files[p] = self.files[p]
+        for p in val_patients:
+            val_files[p] = self.files[p]
+
+        train_dataset = deepcopy(self)
+        train_dataset.files = train_files
+
+        val_dataset = deepcopy(self)
+        val_dataset.files = val_files
+
+        return train_dataset, val_dataset
+
+
+class DMRIRLeftRightDataset(DMRIRDataset):
     """
     A DMRIRMatrixDataset dataset subclass to return paired left-right breast images
     belonging to the same patient
@@ -287,6 +186,18 @@ class DMRIRLeftRightDataset(DMRIRMatrixDataset):
         super().__init__(root, side="both", transforms=transforms, return_mask=return_mask, apply_mask=apply_mask, flip_align=flip_align)
     
     def _get_image_mask_from_idx(self, patient_idx, idx):
+        """
+        Get the image and mask from the dataset given the patient index and the index of the image
+        
+        Args:
+            patient_idx (int): The patient index
+            idx (int): The index of the image
+            
+        Returns:
+            np.array: The image
+            np.array: The left mask
+            np.array: The right mask
+        """
         im_f = self.files[patient_idx]["matrix"][idx]
         mask_l_f = self.files[patient_idx]["left_mask"][idx]
         mask_r_f = self.files[patient_idx]["right_mask"][idx]   
@@ -326,7 +237,16 @@ class DMRIRLeftRightDataset(DMRIRMatrixDataset):
                 idx -= len(self.files[p_id]["matrix"])
 
 
-class LabeledDMRIRDataset(DMRIRMatrixDataset):
+class LabeledDMRIRDataset(DMRIRDataset):
+    """
+    A DMRIRDataset subclass which returns images along with their class labels
+    
+    Args:
+        root (str): The root directory of the dataset
+        class_label (int): The class label to assign to the images
+        transforms (albumentations.Compose): A composition of albumentations transforms
+        apply_mask (bool): Whether to apply the mask to the image
+    """
     def __init__(self, root, class_label, transforms=None, apply_mask=True):
         super().__init__(root, transforms, side='both', return_mask=False, apply_mask=apply_mask, flip_align=False)
         self.class_label = class_label

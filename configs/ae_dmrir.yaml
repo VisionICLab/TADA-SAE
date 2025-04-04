@@ -1,0 +1,50 @@
+input_size: [1, 256, 256]
+# mean: [0.1790]
+# std: [0.2979]
+mean: [0.3597] #(full im)
+std: [0.3075]
+
+
+epochs: 20
+batch_size: 8
+
+optimizer: 
+  name: Adam
+  kwargs:
+    lr: 0.001
+
+loss_fn:
+  name: 'L1Loss'
+  kwargs:
+    reduction: 'mean'
+
+
+# Dataset
+data_root: ./data/dmrir_tadasae/
+normal_dir_train: train/normal
+anomalous_dir_train: train/anomalous
+normal_dir_test: test/normal
+anomalous_dir_test: test/anomalous
+# scheduler:
+#   name: ExponentialLR
+#   kwargs:
+#     gamma: 0.99
+
+# Run related
+num_workers: 0
+log_each: 1
+log_dir: ./logs/ae_full_im
+checkpoint_each: 5
+seed: null
+checkpoint: logs/ae_full_im/checkpoints/simple_ae_adjustedmasks_20.pth
+
+experiment: 'ae_full_im'
+test_only: False
+
+device: cuda
+wandb: False
+entity: ben_schmark
+project_name: thermanomaly
+project_group: ae_dmrir
+model_name: simple_ae_adjustedmasks
+run_name: simple_ae_adjustedmasks_fullim

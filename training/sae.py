@@ -26,10 +26,10 @@ D_REG_EVERY = 16
 class SAETrainer(Trainer):
     def __init__(
         self,
-        encoder,
-        generator,
+        enc,
+        gen,
         str_projector,
-        discriminator,
+        disc,
         cooccur_disc,
         enc_ema,
         gen_ema,
@@ -39,10 +39,10 @@ class SAETrainer(Trainer):
         scheduler=None,
     ):
         super().__init__(None, None, None, config, logger, scheduler)
-        self.encoder = encoder
-        self.generator = generator
+        self.enc = enc
+        self.gen = gen
         self.str_projector = str_projector
-        self.discriminator = discriminator
+        self.disc = disc
         self.cooccur_disc = cooccur_disc
 
         self.patchnce_loss = PatchNCELoss(
@@ -56,15 +56,15 @@ class SAETrainer(Trainer):
         )
 
         self.g_optim = torch.optim.Adam(
-            list(self.encoder.parameters())
-            + list(self.generator.parameters())
+            list(self.enc.parameters())
+            + list(self.gen.parameters())
             + list(self.str_projector.parameters()),
             lr=self.config["lr"],
             betas=(0.5, 0.99),
         )
 
         self.d_optim = torch.optim.Adam(
-            list(self.discriminator.parameters())
+            list(self.disc.parameters())
             + list(self.cooccur_disc.parameters()),
             lr=self.config["lr"],
             betas=(0.5, 0.99),
@@ -85,13 +85,17 @@ class SAETrainer(Trainer):
         self.ada_aug = ada_aug
         self.global_step = 0
 
+    @property
+    def encoder(self):
+        return self.enc_ema
+    
     def _r1_d_regularize(self, real_img, real_patch, ref_patch):
         R1 = 10
         COOCUR_R1 = 1
         real_img.requires_grad = True
         self.d_optim.zero_grad()
         with autocast():
-            real_pred = self.discriminator(real_img)
+            real_pred = self.disc(real_img)
             r1_loss = d_r1_loss(real_pred, real_img)
 
             real_patch.requires_grad = True
@@ -107,7 +111,7 @@ class SAETrainer(Trainer):
         self.d_grad_scaler.scale(r1_loss_sum).backward()
         self.d_grad_scaler.unscale_(self.d_optim)
         torch.nn.utils.clip_grad_norm_(
-            list(self.discriminator.parameters())
+            list(self.disc.parameters())
             + list(self.cooccur_disc.parameters()),
             self.config["grad_clip"],
         )
@@ -131,27 +135,27 @@ class SAETrainer(Trainer):
         real_img1, real_img2 = real_img.chunk(2, dim=0)
         real_mask1, real_mask2 = real_mask.chunk(2, dim=0)
 
-        utils.requires_grad(self.encoder, False)
-        utils.requires_grad(self.generator, False)
+        utils.requires_grad(self.enc, False)
+        utils.requires_grad(self.gen, False)
         utils.requires_grad(self.str_projector, False)
-        utils.requires_grad(self.discriminator, True)
+        utils.requires_grad(self.disc, True)
         utils.requires_grad(self.cooccur_disc, True)
 
         real_img_aug, _ = self.ada_aug(real_img, real_mask)
 
         with autocast():
-            structure1, texture1 = self.encoder(real_img1, multi_tex=False)
-            _, texture2 = self.encoder(real_img2, run_str=False, multi_tex=False)
+            structure1, texture1 = self.enc(real_img1, multi_tex=False)
+            _, texture2 = self.enc(real_img2, run_str=False, multi_tex=False)
 
             # image adversarial loss
-            fake_img1 = self.generator(structure1, texture1)
-            fake_img2 = self.generator(structure1, texture2)
+            fake_img1 = self.gen(structure1, texture1)
+            fake_img2 = self.gen(structure1, texture2)
 
             # augmentations following StyleGAN2-ADA
             fake_img = torch.cat((fake_img1, fake_img2), 0)
             fake_img_aug, _ = self.ada_aug(fake_img)
-            fake_pred = self.discriminator(fake_img_aug)
-            real_pred = self.discriminator(real_img_aug)
+            fake_pred = self.disc(fake_img_aug)
+            real_pred = self.disc(real_img_aug)
             d_loss = d_logistic_loss(real_pred, fake_pred)
 
             # texture adv loss
@@ -173,7 +177,7 @@ class SAETrainer(Trainer):
         self.d_grad_scaler.scale(d_total_loss).backward()
         self.d_grad_scaler.unscale_(self.d_optim)
         torch.nn.utils.clip_grad_norm_(
-            list(self.discriminator.parameters())
+            list(self.disc.parameters())
             + list(self.cooccur_disc.parameters()),
             self.config["grad_clip"],
         )
@@ -188,30 +192,30 @@ class SAETrainer(Trainer):
                 )
             self._r1_d_regularize(real_img, real_patch, ref_patch)
 
-        utils.requires_grad(self.encoder, True)
-        utils.requires_grad(self.generator, True)
+        utils.requires_grad(self.enc, True)
+        utils.requires_grad(self.gen, True)
         utils.requires_grad(self.str_projector, True)
-        utils.requires_grad(self.discriminator, False)
+        utils.requires_grad(self.disc, False)
         utils.requires_grad(self.cooccur_disc, False)
 
         with autocast():
-            structure1_list, texture1 = self.encoder(
+            structure1_list, texture1 = self.enc(
                 real_img1, multi_str=True, multi_tex=False
             )
-            _, texture2 = self.encoder(real_img2, run_str=False, multi_tex=False)
+            _, texture2 = self.enc(real_img2, run_str=False, multi_tex=False)
             structure1 = structure1_list[-1]
 
-            fake_img1 = self.generator(structure1, texture1)
-            fake_img2 = self.generator(structure1, texture2)
+            fake_img1 = self.gen(structure1, texture1)
+            fake_img2 = self.gen(structure1, texture2)
             recon_loss = F.l1_loss(fake_img1, real_img1.detach())
 
-            # image adversarial loss (for generator)
+            # image adversarial loss (for gen)
             fake_img = torch.cat((fake_img1, fake_img2), 0)
             fake_img_aug, _ = self.ada_aug(fake_img)
-            fake_pred = self.discriminator(fake_img_aug)
+            fake_pred = self.disc(fake_img_aug)
             g_loss = g_nonsaturating_loss(fake_pred)
 
-            # texture adversarial loss (for generator)
+            # texture adversarial loss (for gen)
             fake_patch, _ = self.patchify_image(fake_img2, N_CROPS, real_mask1)
             ref_patch, _ = self.patchify_image(
                 real_img2, REF_CROP * N_CROPS, real_mask2
@@ -223,7 +227,7 @@ class SAETrainer(Trainer):
 
             # Patch NCE loss
             # re-encode
-            fake_structure1_list, fake_texture2 = self.encoder(
+            fake_structure1_list, fake_texture2 = self.enc(
                 fake_img2, multi_str=True, multi_tex=False
             )
             fake_patch_vectors, coords = utils.sample_patches(
@@ -252,8 +256,8 @@ class SAETrainer(Trainer):
         self.g_grad_scaler.scale(gen_total_loss).backward()
         self.g_grad_scaler.unscale_(self.g_optim)
         torch.nn.utils.clip_grad_norm_(
-            list(self.encoder.parameters())
-            + list(self.generator.parameters())
+            list(self.enc.parameters())
+            + list(self.gen.parameters())
             + list(self.str_projector.parameters()),
             self.config["grad_clip"],
         )
@@ -287,16 +291,16 @@ class SAETrainer(Trainer):
         real_img1, real_img2 = real_img.chunk(2, dim=0)
         real_mask1, _ = real_mask.chunk(2, dim=0)
 
-        structure1_list, texture1 = self.encoder(
+        structure1_list, texture1 = self.enc(
             real_img1, multi_str=True, multi_tex=False
         )
         structure1 = structure1_list[-1]
-        _, texture2 = self.encoder(real_img2, run_str=False, multi_tex=False)
+        _, texture2 = self.enc(real_img2, run_str=False, multi_tex=False)
 
-        fake_img1 = self.generator(structure1, texture1)
-        fake_img2 = self.generator(structure1, texture2)
+        fake_img1 = self.gen(structure1, texture1)
+        fake_img2 = self.gen(structure1, texture2)
 
-        fake_structure1_list, fake_texture2 = self.encoder(
+        fake_structure1_list, fake_texture2 = self.enc(
             fake_img2, multi_str=True, multi_tex=False
         )
         fake_patch_vectors, coords = utils.sample_patches(
@@ -325,11 +329,13 @@ class SAETrainer(Trainer):
             }
         )
 
+
+    
     def train(self, train_loader):
-        self.encoder.train()
+        self.enc.train()
         self.str_projector.train()
-        self.generator.train()
-        self.discriminator.train()
+        self.gen.train()
+        self.disc.train()
         self.cooccur_disc.train()
 
         progress_bar = tqdm(
@@ -342,8 +348,8 @@ class SAETrainer(Trainer):
 
     @torch.no_grad()
     def evaluate(self, val_loader, train_loader):
-        self.encoder.eval()
-        self.generator.eval()
+        self.enc.eval()
+        self.gen.eval()
 
         progress_bar = tqdm(val_loader, desc="Evaluating reconstruction", colour="cyan")
         for im, mask in progress_bar:
@@ -359,26 +365,26 @@ class SAETrainer(Trainer):
 
     def save_state(self, path):
         if torch.cuda.device_count() > 1:
-            encoder = self.encoder.module
-            generator = self.generator.module
+            enc = self.enc.module
+            gen = self.gen.module
             str_projector = self.str_projector.module
-            discriminator = self.discriminator.module
+            disc = self.disc.module
             cooccur_disc = self.cooccur_disc.module
         else:
-            encoder = self.encoder
-            generator = self.generator
+            enc = self.enc
+            gen = self.gen
             str_projector = self.str_projector
-            discriminator = self.discriminator
+            disc = self.disc
             cooccur_disc = self.cooccur_disc
 
         torch.save(
             {
-                "encoder": encoder.state_dict(),
-                "generator": generator.state_dict(),
+                "enc": enc.state_dict(),
+                "gen": gen.state_dict(),
                 "enc_ema": self.enc_ema.state_dict(),
                 "gen_ema": self.gen_ema.state_dict(),
                 "str_projector": str_projector.state_dict(),
-                "discriminator": discriminator.state_dict(),
+                "disc": disc.state_dict(),
                 "cooccur_disc": cooccur_disc.state_dict(),
                 "g_optim": self.g_optim.state_dict(),
                 "d_optim": self.d_optim.state_dict(),
@@ -393,12 +399,12 @@ class SAETrainer(Trainer):
 
     def load_state(self, path):
         checkpoint = torch.load(path, map_location=self.config["device"])
-        self.encoder.load_state_dict(checkpoint["encoder"])
-        self.generator.load_state_dict(checkpoint["generator"])
+        self.enc.load_state_dict(checkpoint["enc"])
+        self.gen.load_state_dict(checkpoint["gen"])
         self.enc_ema.load_state_dict(checkpoint["enc_ema"])
         self.gen_ema.load_state_dict(checkpoint["gen_ema"])
         self.str_projector.load_state_dict(checkpoint["str_projector"])
-        self.discriminator.load_state_dict(checkpoint["discriminator"])
+        self.disc.load_state_dict(checkpoint["disc"])
         self.cooccur_disc.load_state_dict(checkpoint["cooccur_disc"])
         self.g_optim.load_state_dict(checkpoint["g_optim"])
         self.d_optim.load_state_dict(checkpoint["d_optim"])
@@ -409,10 +415,10 @@ class SAETrainer(Trainer):
         self.global_step = checkpoint["global_step"]
 
         if torch.cuda.device_count() > 1:
-            self.encoder = DataParallel(self.encoder)
-            self.generator = DataParallel(self.generator)
+            self.enc = DataParallel(self.enc)
+            self.gen = DataParallel(self.gen)
             self.str_projector = DataParallel(self.str_projector)
-            self.discriminator = DataParallel(self.discriminator)
+            self.disc = DataParallel(self.disc)
             self.cooccur_disc = DataParallel(self.cooccur_disc)
 
     def fit(self, train_loader, val_loader):
