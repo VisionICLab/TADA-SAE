@@ -6,8 +6,6 @@ data/
 #logging
 wandb/
 logs/
-*.png
-*.jpg
 *.bmp
 *events*
 
