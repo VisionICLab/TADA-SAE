@@ -1,9 +1,16 @@
 # TADA-SAE
 A method for detecting breast cancer from thermal images using bilateral symmetry and learned texture features. Featured in ISBI 2025: https://biomedicalimaging.org/2025/full-program/
 
+## Training
+We train an encoder to disentangle texture and structure attributes from the images, following the principles of the Swapping Autoencoder by Park et al. (https://arxiv.org/abs/2007.00653) and Lung-Swapping Autoencoder by Zhou et al. (https://arxiv.org/abs/2201.07344).
+![Training Diagram](https://github.com/VisionICLab/TADA-SAE/blob/main/figures/tadasae_training.png)
+
+We compare the texture attributes between left and right breasts with a simple absolute difference between the texture vectors. A classifier is then trained over these differences, thus making it able to efficiently detect normal cases from cancerous ones.
+![Inference Diagram](https://github.com/VisionICLab/TADA-SAE/blob/main/figures/tadasae_inference.png)
+
 
 ## Dataset
-The dataset used in this project can be found here:
+The dataset used in this project can be downloaded here:
 https://www.kaggle.com/datasets/tiennelescarbeault/dmr-ir-breast-cancer-detection-for-tada-sae/data
 
 It comprises the formatted breast segmentation masks for both normal and anomalous cases and train-test splits. The original dataset can be found here: http://visual.ic.uff.br/en/proeng/thiagoelias/
